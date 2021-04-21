@@ -1,9 +1,13 @@
 {-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__ >= 702
+#if __GLASGOW_HASKELL__ >= 702 &&  __GLASGOW_HASKELL__ < 810
 {-# LANGUAGE Safe #-}
 #endif
 #if __GLASGOW_HASKELL__ >= 710
 {-# LANGUAGE AutoDeriveTypeable #-}
+#endif
+#if __GLASGOW_HASKELL__ >= 810
+{-# LANGUAGE PartialTypeConstructors, TypeOperators, UndecidableInstances #-}
+{-# LANGUAGE Trustworthy #-}
 #endif
 -----------------------------------------------------------------------------
 -- |
@@ -66,7 +70,9 @@ import Control.Monad.Zip (MonadZip(mzipWith))
 #if MIN_VERSION_base(4,2,0)
 import Data.Functor(Functor(..))
 #endif
-
+#if MIN_VERSION_base(4,14,0)
+import GHC.Types (Total)
+#endif
 -- | The parameterizable reader monad.
 --
 -- Computations are functions of a shared environment.
@@ -171,7 +177,9 @@ instance (Monad m) => Monad (ReaderT r m) where
         a <- runReaderT m r
         runReaderT (k a) r
     {-# INLINE (>>=) #-}
-#if MIN_VERSION_base(4,8,0)
+#if MIN_VERSION_base(4,14,0)
+    m >> k = ReaderT $ \ r -> runReaderT m r >> runReaderT k r
+#elif MIN_VERSION_base(4,8,0)
     (>>) = (*>)
 #else
     m >> k = ReaderT $ \ r -> runReaderT m r >> runReaderT k r
@@ -202,7 +210,11 @@ instance MonadTrans (ReaderT r) where
     lift   = liftReaderT
     {-# INLINE lift #-}
 
-instance (MonadIO m) => MonadIO (ReaderT r m) where
+instance (MonadIO m
+#if MIN_VERSION_base(4,14,0)
+        , Total m
+#endif
+         ) => MonadIO (ReaderT r m) where
     liftIO = lift . liftIO
     {-# INLINE liftIO #-}
 

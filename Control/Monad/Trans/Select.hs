@@ -1,12 +1,17 @@
 {-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__ >= 702
+#if __GLASGOW_HASKELL__ >= 702 && __GLASGOW_HASKELL__ < 810
 {-# LANGUAGE Safe #-}
+#else
+{-# LANGUAGE Trustworthy #-}
 #endif
 #if __GLASGOW_HASKELL__ >= 706
 {-# LANGUAGE PolyKinds #-}
 #endif
 #if __GLASGOW_HASKELL__ >= 710
 {-# LANGUAGE AutoDeriveTypeable #-}
+#endif
+#if MIN_VERSION_base(4,14,0)
+{-# LANGUAGE PartialTypeConstructors, TypeOperators, UndecidableInstances #-}
 #endif
 -----------------------------------------------------------------------------
 -- |
@@ -54,6 +59,9 @@ import Control.Monad
 import qualified Control.Monad.Fail as Fail
 #endif
 import Data.Functor.Identity
+#if MIN_VERSION_base(4,14,0)
+import GHC.Types (type (@@), Total)
+#endif
 
 -- | Selection monad.
 type Select r = SelectT r Identity
@@ -102,7 +110,11 @@ instance (Functor m) => Functor (SelectT r m) where
     fmap f (SelectT g) = SelectT (fmap f . g . (. f))
     {-# INLINE fmap #-}
 
-instance (Functor m, Monad m) => Applicative (SelectT r m) where
+instance (Functor m, Monad m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => Applicative (SelectT r m) where
     pure = lift . return
     {-# INLINE pure #-}
     SelectT gf <*> SelectT gx = SelectT $ \ k -> do
@@ -113,13 +125,21 @@ instance (Functor m, Monad m) => Applicative (SelectT r m) where
     m *> k = m >>= \_ -> k
     {-# INLINE (*>) #-}
 
-instance (Functor m, MonadPlus m) => Alternative (SelectT r m) where
+instance (Functor m, MonadPlus m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => Alternative (SelectT r m) where
     empty = mzero
     {-# INLINE empty #-}
     (<|>) = mplus
     {-# INLINE (<|>) #-}
 
-instance (Monad m) => Monad (SelectT r m) where
+instance (Monad m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => Monad (SelectT r m) where
 #if !(MIN_VERSION_base(4,8,0))
     return = lift . return
     {-# INLINE return #-}
@@ -131,12 +151,20 @@ instance (Monad m) => Monad (SelectT r m) where
     {-# INLINE (>>=) #-}
 
 #if MIN_VERSION_base(4,9,0)
-instance (Fail.MonadFail m) => Fail.MonadFail (SelectT r m) where
+instance (Fail.MonadFail m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => Fail.MonadFail (SelectT r m) where
     fail msg = lift (Fail.fail msg)
     {-# INLINE fail #-}
 #endif
 
-instance (MonadPlus m) => MonadPlus (SelectT r m) where
+instance (MonadPlus m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => MonadPlus (SelectT r m) where
     mzero = SelectT (const mzero)
     {-# INLINE mzero #-}
     SelectT f `mplus` SelectT g = SelectT $ \ k -> f k `mplus` g k
@@ -146,7 +174,11 @@ instance MonadTrans (SelectT r) where
     lift = SelectT . const
     {-# INLINE lift #-}
 
-instance (MonadIO m) => MonadIO (SelectT r m) where
+instance (MonadIO m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => MonadIO (SelectT r m) where
     liftIO = lift . liftIO
     {-# INLINE liftIO #-}
 

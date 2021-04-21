@@ -1,9 +1,14 @@
 {-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__ >= 702
+#if __GLASGOW_HASKELL__ >= 702 && __GLASGOW_HASKELL__ < 810
 {-# LANGUAGE Safe #-}
+#else
+{-# LANGUAGE Trustworthy #-}
 #endif
 #if __GLASGOW_HASKELL__ >= 710
 {-# LANGUAGE AutoDeriveTypeable #-}
+#endif
+#if MIN_VERSION_base(4,14,0)
+{-# LANGUAGE PartialTypeConstructors, TypeOperators, UndecidableInstances #-}
 #endif
 -----------------------------------------------------------------------------
 -- |
@@ -38,6 +43,9 @@ import Data.Foldable (Foldable(foldMap))
 import Data.Functor.Constant
 import Data.Monoid (Monoid(..))
 import Data.Traversable (Traversable(traverse))
+#if MIN_VERSION_base(4,14,0)
+import GHC.Types (type (@@), Total)
+#endif
 
 -- | Applicative functor formed by adding pure computations to a given
 -- applicative functor.
@@ -67,10 +75,29 @@ instance (Show1 f) => Show1 (Lift f) where
     liftShowsPrec sp sl d (Other y) =
         showsUnaryWith (liftShowsPrec sp sl) "Other" d y
 
-instance (Eq1 f, Eq a) => Eq (Lift f a) where (==) = eq1
-instance (Ord1 f, Ord a) => Ord (Lift f a) where compare = compare1
-instance (Read1 f, Read a) => Read (Lift f a) where readsPrec = readsPrec1
-instance (Show1 f, Show a) => Show (Lift f a) where showsPrec = showsPrec1
+instance (Eq1 f, Eq a
+#if MIN_VERSION_base(4,14,0)
+         , f @@ a
+#endif         
+         ) => Eq (Lift f a) where (==) = eq1
+
+instance (Ord1 f, Ord a
+#if MIN_VERSION_base(4,14,0)
+         , f @@ a
+#endif
+         ) => Ord (Lift f a) where compare = compare1
+
+instance (Read1 f, Read a
+#if MIN_VERSION_base(4,14,0)
+         , f @@ a
+#endif
+         ) => Read (Lift f a) where readsPrec = readsPrec1
+
+instance (Show1 f, Show a
+#if MIN_VERSION_base(4,14,0)
+         , f @@ a
+#endif
+         ) => Show (Lift f a) where showsPrec = showsPrec1
 
 instance (Functor f) => Functor (Lift f) where
     fmap f (Pure x) = Pure (f x)
@@ -88,7 +115,11 @@ instance (Traversable f) => Traversable (Lift f) where
     {-# INLINE traverse #-}
 
 -- | A combination is 'Pure' only if both parts are.
-instance (Applicative f) => Applicative (Lift f) where
+instance (Applicative f
+#if MIN_VERSION_base(4,14,0)
+         , Total f
+#endif
+         ) => Applicative (Lift f) where
     pure = Pure
     {-# INLINE pure #-}
     Pure f <*> Pure x = Pure (f x)
@@ -98,7 +129,11 @@ instance (Applicative f) => Applicative (Lift f) where
     {-# INLINE (<*>) #-}
 
 -- | A combination is 'Pure' only either part is.
-instance (Alternative f) => Alternative (Lift f) where
+instance (Alternative f
+#if MIN_VERSION_base(4,14,0)
+         , Total f
+#endif
+         ) => Alternative (Lift f) where
     empty = Other empty
     {-# INLINE empty #-}
     Pure x <|> _ = Pure x

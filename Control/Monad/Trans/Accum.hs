@@ -1,9 +1,14 @@
 {-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__ >= 702
+#if __GLASGOW_HASKELL__ >= 702 && __GLASGOW_HASKELL__ < 810
 {-# LANGUAGE Safe #-}
+#else
+{-# LANGUAGE Trustworthy #-}
 #endif
 #if __GLASGOW_HASKELL__ >= 710
 {-# LANGUAGE AutoDeriveTypeable #-}
+#endif
+#if MIN_VERSION_base(4,14,0)
+{-# LANGUAGE PartialTypeConstructors, TypeOperators, UndecidableInstances #-}
 #endif
 -----------------------------------------------------------------------------
 -- |
@@ -69,6 +74,9 @@ import Control.Monad.Fix
 import Control.Monad.Signatures
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid
+#endif
+#if MIN_VERSION_base(4,14,0)
+import GHC.Types (type (@@), Total)
 #endif
 
 -- ---------------------------------------------------------------------------
@@ -167,7 +175,11 @@ instance (Functor m) => Functor (AccumT w m) where
     fmap f = mapAccumT $ fmap $ \ ~(a, w) -> (f a, w)
     {-# INLINE fmap #-}
 
-instance (Monoid w, Functor m, Monad m) => Applicative (AccumT w m) where
+instance (Monoid w, Functor m, Monad m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => Applicative (AccumT w m) where
     pure a  = AccumT $ const $ return (a, mempty)
     {-# INLINE pure #-}
     mf <*> mv = AccumT $ \ w -> do
@@ -176,13 +188,21 @@ instance (Monoid w, Functor m, Monad m) => Applicative (AccumT w m) where
       return (f v, w' `mappend` w'')
     {-# INLINE (<*>) #-}
 
-instance (Monoid w, Functor m, MonadPlus m) => Alternative (AccumT w m) where
+instance (Monoid w, Functor m, MonadPlus m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => Alternative (AccumT w m) where
     empty   = AccumT $ const mzero
     {-# INLINE empty #-}
     m <|> n = AccumT $ \ w -> runAccumT m w `mplus` runAccumT n w
     {-# INLINE (<|>) #-}
 
-instance (Monoid w, Functor m, Monad m) => Monad (AccumT w m) where
+instance (Monoid w, Functor m, Monad m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => Monad (AccumT w m) where
 #if !(MIN_VERSION_base(4,8,0))
     return a  = AccumT $ const $ return (a, mempty)
     {-# INLINE return #-}
@@ -198,18 +218,30 @@ instance (Monoid w, Functor m, Monad m) => Monad (AccumT w m) where
 #endif
 
 #if MIN_VERSION_base(4,9,0)
-instance (Monoid w, Fail.MonadFail m) => Fail.MonadFail (AccumT w m) where
+instance (Monoid w, Fail.MonadFail m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => Fail.MonadFail (AccumT w m) where
     fail msg = AccumT $ const (Fail.fail msg)
     {-# INLINE fail #-}
 #endif
 
-instance (Monoid w, Functor m, MonadPlus m) => MonadPlus (AccumT w m) where
+instance (Monoid w, Functor m, MonadPlus m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => MonadPlus (AccumT w m) where
     mzero       = AccumT $ const mzero
     {-# INLINE mzero #-}
     m `mplus` n = AccumT $ \ w -> runAccumT m w `mplus` runAccumT n w
     {-# INLINE mplus #-}
 
-instance (Monoid w, Functor m, MonadFix m) => MonadFix (AccumT w m) where
+instance (Monoid w, Functor m, MonadFix m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => MonadFix (AccumT w m) where
     mfix m = AccumT $ \ w -> mfix $ \ ~(a, _) -> runAccumT (m a) w
     {-# INLINE mfix #-}
 
@@ -219,7 +251,11 @@ instance (Monoid w) => MonadTrans (AccumT w) where
         return (a, mempty)
     {-# INLINE lift #-}
 
-instance (Monoid w, Functor m, MonadIO m) => MonadIO (AccumT w m) where
+instance (Monoid w, Functor m, MonadIO m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => MonadIO (AccumT w m) where
     liftIO = lift . liftIO
     {-# INLINE liftIO #-}
 

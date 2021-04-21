@@ -1,10 +1,16 @@
 {-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__ >= 702
+#if __GLASGOW_HASKELL__ >= 702 && __GLASGOW_HASKELL__ < 810
 {-# LANGUAGE Safe #-}
+#else
+{-# LANGUAGE Trustworthy #-}
 #endif
 #if __GLASGOW_HASKELL__ >= 710
 {-# LANGUAGE AutoDeriveTypeable #-}
 #endif
+#if __GLASGOW_HASKELL__ >= 810
+{-# LANGUAGE PartialTypeConstructors, UndecidableInstances #-}
+#endif
+{-# LANGUAGE TypeOperators #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Control.Monad.Trans.Except
@@ -68,6 +74,10 @@ import Control.Monad.Zip (MonadZip(mzipWith))
 import Data.Foldable (Foldable(foldMap))
 import Data.Monoid
 import Data.Traversable (Traversable(traverse))
+
+#if __GLASGOW_HASKELL__ >= 810
+import GHC.Types (type (@@), Total)
+#endif 
 
 -- | The parameterizable exception monad.
 --
@@ -141,13 +151,29 @@ instance (Show e, Show1 m) => Show1 (ExceptT e m) where
         sp' = liftShowsPrec sp sl
         sl' = liftShowList sp sl
 
-instance (Eq e, Eq1 m, Eq a) => Eq (ExceptT e m a)
+instance (Eq e, Eq1 m, Eq a
+#if MIN_VERSION_base(4,14,0)
+         , m @@ Either e a
+#endif
+         ) => Eq (ExceptT e m a)
     where (==) = eq1
-instance (Ord e, Ord1 m, Ord a) => Ord (ExceptT e m a)
+instance (Ord e, Ord1 m, Ord a
+#if MIN_VERSION_base(4,14,0)
+         , m @@ Either e a
+#endif
+         ) => Ord (ExceptT e m a)
     where compare = compare1
-instance (Read e, Read1 m, Read a) => Read (ExceptT e m a) where
+instance (Read e, Read1 m, Read a
+#if MIN_VERSION_base(4,14,0)
+         , m @@ Either e a
+#endif
+         ) => Read (ExceptT e m a) where
     readsPrec = readsPrec1
-instance (Show e, Show1 m, Show a) => Show (ExceptT e m a) where
+instance (Show e, Show1 m, Show a
+#if MIN_VERSION_base(4,14,0)
+         , m @@ Either e a
+#endif
+         ) => Show (ExceptT e m a) where
     showsPrec = showsPrec1
 
 -- | The inverse of 'ExceptT'.
@@ -178,12 +204,20 @@ instance (Foldable f) => Foldable (ExceptT e f) where
     foldMap f (ExceptT a) = foldMap (either (const mempty) f) a
     {-# INLINE foldMap #-}
 
-instance (Traversable f) => Traversable (ExceptT e f) where
+instance (Traversable f
+#if MIN_VERSION_base(4,14,0)
+         , Total f
+#endif
+         ) => Traversable (ExceptT e f) where
     traverse f (ExceptT a) =
         ExceptT <$> traverse (either (pure . Left) (fmap Right . f)) a
     {-# INLINE traverse #-}
 
-instance (Functor m, Monad m) => Applicative (ExceptT e m) where
+instance (Functor m, Monad m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => Applicative (ExceptT e m) where
     pure a = ExceptT $ return (Right a)
     {-# INLINE pure #-}
     ExceptT f <*> ExceptT v = ExceptT $ do
@@ -199,7 +233,11 @@ instance (Functor m, Monad m) => Applicative (ExceptT e m) where
     m *> k = m >>= \_ -> k
     {-# INLINE (*>) #-}
 
-instance (Functor m, Monad m, Monoid e) => Alternative (ExceptT e m) where
+instance (Functor m, Monad m, Monoid e
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => Alternative (ExceptT e m) where
     empty = ExceptT $ return (Left mempty)
     {-# INLINE empty #-}
     ExceptT mx <|> ExceptT my = ExceptT $ do
@@ -209,7 +247,11 @@ instance (Functor m, Monad m, Monoid e) => Alternative (ExceptT e m) where
             Right x -> return (Right x)
     {-# INLINEABLE (<|>) #-}
 
-instance (Monad m) => Monad (ExceptT e m) where
+instance (Monad m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => Monad (ExceptT e m) where
 #if !(MIN_VERSION_base(4,8,0))
     return a = ExceptT $ return (Right a)
     {-# INLINE return #-}
@@ -226,12 +268,20 @@ instance (Monad m) => Monad (ExceptT e m) where
 #endif
 
 #if MIN_VERSION_base(4,9,0)
-instance (Fail.MonadFail m) => Fail.MonadFail (ExceptT e m) where
+instance (Fail.MonadFail m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => Fail.MonadFail (ExceptT e m) where
     fail = ExceptT . Fail.fail
     {-# INLINE fail #-}
 #endif
 
-instance (Monad m, Monoid e) => MonadPlus (ExceptT e m) where
+instance (Monad m, Monoid e
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => MonadPlus (ExceptT e m) where
     mzero = ExceptT $ return (Left mempty)
     {-# INLINE mzero #-}
     ExceptT mx `mplus` ExceptT my = ExceptT $ do
@@ -241,7 +291,11 @@ instance (Monad m, Monoid e) => MonadPlus (ExceptT e m) where
             Right x -> return (Right x)
     {-# INLINEABLE mplus #-}
 
-instance (MonadFix m) => MonadFix (ExceptT e m) where
+instance (MonadFix m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => MonadFix (ExceptT e m) where
     mfix f = ExceptT (mfix (runExceptT . f . either (const bomb) id))
       where bomb = error "mfix (ExceptT): inner computation returned Left value"
     {-# INLINE mfix #-}
@@ -250,12 +304,20 @@ instance MonadTrans (ExceptT e) where
     lift = ExceptT . liftM Right
     {-# INLINE lift #-}
 
-instance (MonadIO m) => MonadIO (ExceptT e m) where
+instance (MonadIO m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => MonadIO (ExceptT e m) where
     liftIO = lift . liftIO
     {-# INLINE liftIO #-}
 
 #if MIN_VERSION_base(4,4,0)
-instance (MonadZip m) => MonadZip (ExceptT e m) where
+instance (MonadZip m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => MonadZip (ExceptT e m) where
     mzipWith f (ExceptT a) (ExceptT b) = ExceptT $ mzipWith (liftA2 f) a b
     {-# INLINE mzipWith #-}
 #endif
@@ -299,18 +361,36 @@ liftCallCC callCC f = ExceptT $
     runExceptT (f (\ a -> ExceptT $ c (Right a)))
 {-# INLINE liftCallCC #-}
 
+
+#if __GLASGOW_HASKELL__ >= 810
 -- | Lift a @listen@ operation to the new monad.
-liftListen :: (Monad m) => Listen w m (Either e a) -> Listen w (ExceptT e m) a
+liftListen :: (Monad m, m @@ (Either e a, w), m @@ Either e a) => Listen w m (Either e a) -> Listen w (ExceptT e m) a
 liftListen listen = mapExceptT $ \ m -> do
     (a, w) <- listen m
     return $! fmap (\ r -> (r, w)) a
 {-# INLINE liftListen #-}
 
 -- | Lift a @pass@ operation to the new monad.
-liftPass :: (Monad m) => Pass w m (Either e a) -> Pass w (ExceptT e m) a
+liftPass :: (Monad m, m @@ (Either e a, w -> w), m @@ Either e a, m @@ Either e (a, w -> w)) => Pass w m (Either e a) -> Pass w (ExceptT e m) a
 liftPass pass = mapExceptT $ \ m -> pass $ do
     a <- m
     return $! case a of
         Left l -> (Left l, id)
         Right (r, f) -> (Right r, f)
 {-# INLINE liftPass #-}
+#else
+-- | Lift a @listen@ operation to the new monad.
+liftListen :: Monad m => Listen w m (Either e a) -> Listen w (ExceptT e m) a
+liftListen listen = mapExceptT $ \ m -> do
+    (a, w) <- listen m
+    return $! fmap (\ r -> (r, w)) a
+{-# INLINE liftListen #-}
+
+-- | Lift a @pass@ operation to the new monad.
+liftPass :: Monad m => Pass w m (Either e a) -> Pass w (ExceptT e m) a
+liftPass pass = mapExceptT $ \ m -> pass $ do
+    a <- m
+    return $! case a of
+        Left l -> (Left l, id)
+        Right (r, f) -> (Right r, f)
+#endif 

@@ -8,6 +8,10 @@
 #if __GLASGOW_HASKELL__ >= 710
 {-# LANGUAGE AutoDeriveTypeable #-}
 #endif
+#if MIN_VERSION_base(4,14,0)
+{-# LANGUAGE PartialTypeConstructors #-}
+#endif
+
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Functor.Constant

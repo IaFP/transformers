@@ -1,12 +1,17 @@
 {-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__ >= 702
+#if __GLASGOW_HASKELL__ >= 702 && __GLASGOW_HASKELL__ < 810
 {-# LANGUAGE Safe #-}
+#else
+{-# LANGUAGE Trustworthy #-}
 #endif
 #if __GLASGOW_HASKELL__ >= 706
 {-# LANGUAGE PolyKinds #-}
 #endif
 #if __GLASGOW_HASKELL__ >= 710
 {-# LANGUAGE AutoDeriveTypeable #-}
+#endif
+#if MIN_VERSION_base(4,14,0)
+{-# LANGUAGE PartialTypeConstructors, TypeOperators, UndecidableInstances #-}
 #endif
 -----------------------------------------------------------------------------
 -- |
@@ -41,6 +46,9 @@ import qualified Control.Monad.Fail as Fail
 import Data.Foldable
 import Data.Traversable
 import Data.Monoid
+#if MIN_VERSION_base(4,14,0)
+import GHC.Types (type (@@), Total)
+#endif
 
 -- | The same functor, but with 'Foldable' and 'Traversable' instances
 -- that process the elements in the reverse order.
@@ -62,10 +70,26 @@ instance (Show1 f) => Show1 (Reverse f) where
     liftShowsPrec sp sl d (Reverse x) =
         showsUnaryWith (liftShowsPrec sp sl) "Reverse" d x
 
-instance (Eq1 f, Eq a) => Eq (Reverse f a) where (==) = eq1
-instance (Ord1 f, Ord a) => Ord (Reverse f a) where compare = compare1
-instance (Read1 f, Read a) => Read (Reverse f a) where readsPrec = readsPrec1
-instance (Show1 f, Show a) => Show (Reverse f a) where showsPrec = showsPrec1
+instance (Eq1 f, Eq a
+#if MIN_VERSION_base(4,14,0)
+         , f @@ a
+#endif         
+         ) => Eq (Reverse f a) where (==) = eq1
+instance (Ord1 f, Ord a
+#if MIN_VERSION_base(4,14,0)
+         , f @@ a
+#endif         
+         ) => Ord (Reverse f a) where compare = compare1
+instance (Read1 f, Read a
+#if MIN_VERSION_base(4,14,0)
+         , f @@ a
+#endif         
+         ) => Read (Reverse f a) where readsPrec = readsPrec1
+instance (Show1 f, Show a
+#if MIN_VERSION_base(4,14,0)
+         , f @@ a
+#endif         
+         ) => Show (Reverse f a) where showsPrec = showsPrec1
 
 -- | Derived instance.
 instance (Functor f) => Functor (Reverse f) where
@@ -73,21 +97,33 @@ instance (Functor f) => Functor (Reverse f) where
     {-# INLINE fmap #-}
 
 -- | Derived instance.
-instance (Applicative f) => Applicative (Reverse f) where
+instance (Applicative f
+#if MIN_VERSION_base(4,14,0)
+         , Total f
+#endif
+         ) => Applicative (Reverse f) where
     pure a = Reverse (pure a)
     {-# INLINE pure #-}
     Reverse f <*> Reverse a = Reverse (f <*> a)
     {-# INLINE (<*>) #-}
 
 -- | Derived instance.
-instance (Alternative f) => Alternative (Reverse f) where
+instance (Alternative f
+#if MIN_VERSION_base(4,14,0)
+         , Total f
+#endif
+         ) => Alternative (Reverse f) where
     empty = Reverse empty
     {-# INLINE empty #-}
     Reverse x <|> Reverse y = Reverse (x <|> y)
     {-# INLINE (<|>) #-}
 
 -- | Derived instance.
-instance (Monad m) => Monad (Reverse m) where
+instance (Monad m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => Monad (Reverse m) where
 #if !(MIN_VERSION_base(4,8,0))
     return a = Reverse (return a)
     {-# INLINE return #-}
@@ -100,13 +136,21 @@ instance (Monad m) => Monad (Reverse m) where
 #endif
 
 #if MIN_VERSION_base(4,9,0)
-instance (Fail.MonadFail m) => Fail.MonadFail (Reverse m) where
+instance (Fail.MonadFail m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => Fail.MonadFail (Reverse m) where
     fail msg = Reverse (Fail.fail msg)
     {-# INLINE fail #-}
 #endif
 
 -- | Derived instance.
-instance (MonadPlus m) => MonadPlus (Reverse m) where
+instance (MonadPlus m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => MonadPlus (Reverse m) where
     mzero = Reverse mzero
     {-# INLINE mzero #-}
     Reverse x `mplus` Reverse y = Reverse (x `mplus` y)
@@ -130,7 +174,11 @@ instance (Foldable f) => Foldable (Reverse f) where
 #endif
 
 -- | Traverse from right to left.
-instance (Traversable f) => Traversable (Reverse f) where
+instance (Traversable f
+#if MIN_VERSION_base(4,14,0)
+         , Total f
+#endif         
+         ) => Traversable (Reverse f) where
     traverse f (Reverse t) =
         fmap Reverse . forwards $ traverse (Backwards . f) t
     {-# INLINE traverse #-}

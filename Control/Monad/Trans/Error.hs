@@ -1,12 +1,17 @@
 {-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__ >= 702
+#if __GLASGOW_HASKELL__ >= 702 && __GLASGOW_HASKELL__ < 810
 {-# LANGUAGE Safe #-}
+#else
+{-# LANGUAGE Trustworthy #-}
 #endif
 #if __GLASGOW_HASKELL__ >= 710
 {-# LANGUAGE AutoDeriveTypeable #-}
 #endif
 #if !(MIN_VERSION_base(4,9,0))
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+#endif
+#if MIN_VERSION_base(4,14,0)
+{-# LANGUAGE PartialTypeConstructors, TypeOperators, UndecidableInstances, ConstrainedClassMethods #-}
 #endif
 -----------------------------------------------------------------------------
 -- |
@@ -76,6 +81,9 @@ import Data.Foldable (Foldable(foldMap))
 import Data.Monoid (mempty)
 import Data.Traversable (Traversable(traverse))
 import System.IO.Error
+#if MIN_VERSION_base(4,14,0)
+import GHC.Types (type (@@), Total)
+#endif
 
 #if !(MIN_VERSION_base(4,9,0))
 -- These instances are in base-4.9.0
@@ -188,11 +196,27 @@ instance (Show e, Show1 m) => Show1 (ErrorT e m) where
         sp' = liftShowsPrec sp sl
         sl' = liftShowList sp sl
 
-instance (Eq e, Eq1 m, Eq a) => Eq (ErrorT e m a) where (==) = eq1
-instance (Ord e, Ord1 m, Ord a) => Ord (ErrorT e m a) where compare = compare1
-instance (Read e, Read1 m, Read a) => Read (ErrorT e m a) where
+instance (Eq e, Eq1 m, Eq a
+#if MIN_VERSION_base(4,14,0)
+         , m @@ Either e a
+#endif
+         ) => Eq (ErrorT e m a) where (==) = eq1
+instance (Ord e, Ord1 m, Ord a
+#if MIN_VERSION_base(4,14,0)
+         , m @@ Either e a
+#endif
+         ) => Ord (ErrorT e m a) where compare = compare1
+instance (Read e, Read1 m, Read a
+#if MIN_VERSION_base(4,14,0)
+         , m @@ Either e a
+#endif
+         ) => Read (ErrorT e m a) where
     readsPrec = readsPrec1
-instance (Show e, Show1 m, Show a) => Show (ErrorT e m a) where
+instance (Show e, Show1 m, Show a
+#if MIN_VERSION_base(4,14,0)
+         , m @@ Either e a
+#endif
+         ) => Show (ErrorT e m a) where
     showsPrec = showsPrec1
 
 -- | Map the unwrapped computation using the given function.
@@ -209,11 +233,19 @@ instance (Functor m) => Functor (ErrorT e m) where
 instance (Foldable f) => Foldable (ErrorT e f) where
     foldMap f (ErrorT a) = foldMap (either (const mempty) f) a
 
-instance (Traversable f) => Traversable (ErrorT e f) where
+instance (Traversable f
+#if MIN_VERSION_base(4,14,0)
+         , Total f
+#endif
+         ) => Traversable (ErrorT e f) where
     traverse f (ErrorT a) =
         ErrorT <$> traverse (either (pure . Left) (fmap Right . f)) a
 
-instance (Functor m, Monad m) => Applicative (ErrorT e m) where
+instance (Functor m, Monad m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => Applicative (ErrorT e m) where
     pure a  = ErrorT $ return (Right a)
     f <*> v = ErrorT $ do
         mf <- runErrorT f
@@ -225,11 +257,19 @@ instance (Functor m, Monad m) => Applicative (ErrorT e m) where
                     Left  e -> return (Left e)
                     Right x -> return (Right (k x))
 
-instance (Functor m, Monad m, Error e) => Alternative (ErrorT e m) where
+instance (Functor m, Monad m, Error e
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => Alternative (ErrorT e m) where
     empty = mzero
     (<|>) = mplus
 
-instance (Monad m, Error e) => Monad (ErrorT e m) where
+instance (Monad m, Error e
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => Monad (ErrorT e m) where
 #if !(MIN_VERSION_base(4,8,0))
     return a = ErrorT $ return (Right a)
 #endif
@@ -243,11 +283,19 @@ instance (Monad m, Error e) => Monad (ErrorT e m) where
 #endif
 
 #if MIN_VERSION_base(4,9,0)
-instance (Monad m, Error e) => Fail.MonadFail (ErrorT e m) where
+instance (Monad m, Error e
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => Fail.MonadFail (ErrorT e m) where
     fail msg = ErrorT $ return (Left (strMsg msg))
 #endif
 
-instance (Monad m, Error e) => MonadPlus (ErrorT e m) where
+instance (Monad m, Error e
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => MonadPlus (ErrorT e m) where
     mzero       = ErrorT $ return (Left noMsg)
     m `mplus` n = ErrorT $ do
         a <- runErrorT m
@@ -255,7 +303,11 @@ instance (Monad m, Error e) => MonadPlus (ErrorT e m) where
             Left  _ -> runErrorT n
             Right r -> return (Right r)
 
-instance (MonadFix m, Error e) => MonadFix (ErrorT e m) where
+instance (MonadFix m, Error e
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => MonadFix (ErrorT e m) where
     mfix f = ErrorT $ mfix $ \ a -> runErrorT $ f $ case a of
         Right r -> r
         _       -> error "empty mfix argument"
@@ -265,7 +317,11 @@ instance MonadTrans (ErrorT e) where
         a <- m
         return (Right a)
 
-instance (Error e, MonadIO m) => MonadIO (ErrorT e m) where
+instance (Error e, MonadIO m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => MonadIO (ErrorT e m) where
     liftIO = lift . liftIO
 
 #if MIN_VERSION_base(4,12,0)

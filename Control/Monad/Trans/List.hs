@@ -1,9 +1,14 @@
 {-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__ >= 702
+#if __GLASGOW_HASKELL__ >= 702 && __GLASGOW_HASKELL__ < 810
 {-# LANGUAGE Safe #-}
+#else
+{-# LANGUAGE Trustworthy #-}
 #endif
 #if __GLASGOW_HASKELL__ >= 710
 {-# LANGUAGE AutoDeriveTypeable #-}
+#endif
+#if MIN_VERSION_base(4,14,0)
+{-# LANGUAGE PartialTypeConstructors, TypeOperators, UndecidableInstances #-}
 #endif
 -----------------------------------------------------------------------------
 -- |
@@ -49,6 +54,9 @@ import Control.Monad.Zip (MonadZip(mzipWith))
 #endif
 import Data.Foldable (Foldable(foldMap))
 import Data.Traversable (Traversable(traverse))
+#if MIN_VERSION_base(4,14,0)
+import GHC.Types (type (@@), Total)
+#endif
 
 -- | Parameterizable list monad, with an inner monad.
 --
@@ -77,10 +85,26 @@ instance (Show1 m) => Show1 (ListT m) where
         sp' = liftShowsPrec sp sl
         sl' = liftShowList sp sl
 
-instance (Eq1 m, Eq a) => Eq (ListT m a) where (==) = eq1
-instance (Ord1 m, Ord a) => Ord (ListT m a) where compare = compare1
-instance (Read1 m, Read a) => Read (ListT m a) where readsPrec = readsPrec1
-instance (Show1 m, Show a) => Show (ListT m a) where showsPrec = showsPrec1
+instance (Eq1 m, Eq a
+#if MIN_VERSION_base(4,14,0)
+         , m @@ [a]
+#endif
+         ) => Eq (ListT m a) where (==) = eq1
+instance (Ord1 m, Ord a
+#if MIN_VERSION_base(4,14,0)
+         , m @@ [a]
+#endif
+         ) => Ord (ListT m a) where compare = compare1
+instance (Read1 m, Read a
+#if MIN_VERSION_base(4,14,0)
+         , m @@ [a]
+#endif
+         ) => Read (ListT m a) where readsPrec = readsPrec1
+instance (Show1 m, Show a
+#if MIN_VERSION_base(4,14,0)
+         , m @@ [a]
+#endif
+         ) => Show (ListT m a) where showsPrec = showsPrec1
 
 -- | Map between 'ListT' computations.
 --
@@ -97,23 +121,39 @@ instance (Foldable f) => Foldable (ListT f) where
     foldMap f (ListT a) = foldMap (foldMap f) a
     {-# INLINE foldMap #-}
 
-instance (Traversable f) => Traversable (ListT f) where
+instance (Traversable f
+#if MIN_VERSION_base(4,14,0)
+         , Total f
+#endif
+         ) => Traversable (ListT f) where
     traverse f (ListT a) = ListT <$> traverse (traverse f) a
     {-# INLINE traverse #-}
 
-instance (Applicative m) => Applicative (ListT m) where
+instance (Applicative m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => Applicative (ListT m) where
     pure a  = ListT $ pure [a]
     {-# INLINE pure #-}
     f <*> v = ListT $ (<*>) <$> runListT f <*> runListT v
     {-# INLINE (<*>) #-}
 
-instance (Applicative m) => Alternative (ListT m) where
+instance (Applicative m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => Alternative (ListT m) where
     empty   = ListT $ pure []
     {-# INLINE empty #-}
     m <|> n = ListT $ (++) <$> runListT m <*> runListT n
     {-# INLINE (<|>) #-}
 
-instance (Monad m) => Monad (ListT m) where
+instance (Monad m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => Monad (ListT m) where
 #if !(MIN_VERSION_base(4,8,0))
     return a = ListT $ return [a]
     {-# INLINE return #-}
@@ -129,12 +169,20 @@ instance (Monad m) => Monad (ListT m) where
 #endif
 
 #if MIN_VERSION_base(4,9,0)
-instance (Monad m) => Fail.MonadFail (ListT m) where
+instance (Monad m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => Fail.MonadFail (ListT m) where
     fail _ = ListT $ return []
     {-# INLINE fail #-}
 #endif
 
-instance (Monad m) => MonadPlus (ListT m) where
+instance (Monad m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => MonadPlus (ListT m) where
     mzero       = ListT $ return []
     {-# INLINE mzero #-}
     m `mplus` n = ListT $ do
@@ -143,7 +191,11 @@ instance (Monad m) => MonadPlus (ListT m) where
         return (a ++ b)
     {-# INLINE mplus #-}
 
-instance (MonadFix m) => MonadFix (ListT m) where
+instance (MonadFix m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => MonadFix (ListT m) where
     mfix f = ListT $ mfix (runListT . f . head) >>= \ xs -> case xs of
         [] -> return []
         x:_ -> liftM (x:) (runListT (mfix (mapListT (liftM tail) . f)))
@@ -155,12 +207,20 @@ instance MonadTrans ListT where
         return [a]
     {-# INLINE lift #-}
 
-instance (MonadIO m) => MonadIO (ListT m) where
+instance (MonadIO m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => MonadIO (ListT m) where
     liftIO = lift . liftIO
     {-# INLINE liftIO #-}
 
 #if MIN_VERSION_base(4,4,0)
-instance (MonadZip m) => MonadZip (ListT m) where
+instance (MonadZip m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => MonadZip (ListT m) where
     mzipWith f (ListT a) (ListT b) = ListT $ mzipWith (zipWith f) a b
     {-# INLINE mzipWith #-}
 #endif

@@ -1,9 +1,14 @@
 {-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__ >= 702
+#if __GLASGOW_HASKELL__ >= 702 && __GLASGOW_HASKELL__ < 810
 {-# LANGUAGE Safe #-}
+#else
+{-# LANGUAGE Trustworthy #-}
 #endif
 #if __GLASGOW_HASKELL__ >= 710
 {-# LANGUAGE AutoDeriveTypeable #-}
+#endif
+#if MIN_VERSION_base(4,14,0)
+{-# LANGUAGE PartialTypeConstructors, TypeOperators, UndecidableInstances #-}
 #endif
 -----------------------------------------------------------------------------
 -- |
@@ -87,6 +92,9 @@ import Control.Monad
 import qualified Control.Monad.Fail as Fail
 #endif
 import Control.Monad.Fix
+#if MIN_VERSION_base(4,14,0)
+import GHC.Types (type (@@), Total)
+#endif
 
 -- ---------------------------------------------------------------------------
 -- | A state monad parameterized by the type @s@ of the state to carry.
@@ -201,7 +209,11 @@ instance (Functor m) => Functor (StateT s m) where
         fmap (\ ~(a, s') -> (f a, s')) $ runStateT m s
     {-# INLINE fmap #-}
 
-instance (Functor m, Monad m) => Applicative (StateT s m) where
+instance (Functor m, Monad m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => Applicative (StateT s m) where
     pure a = StateT $ \ s -> return (a, s)
     {-# INLINE pure #-}
     StateT mf <*> StateT mx = StateT $ \ s -> do
@@ -212,13 +224,21 @@ instance (Functor m, Monad m) => Applicative (StateT s m) where
     m *> k = m >>= \_ -> k
     {-# INLINE (*>) #-}
 
-instance (Functor m, MonadPlus m) => Alternative (StateT s m) where
+instance (Functor m, MonadPlus m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => Alternative (StateT s m) where
     empty = StateT $ \ _ -> mzero
     {-# INLINE empty #-}
     StateT m <|> StateT n = StateT $ \ s -> m s `mplus` n s
     {-# INLINE (<|>) #-}
 
-instance (Monad m) => Monad (StateT s m) where
+instance (Monad m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => Monad (StateT s m) where
 #if !(MIN_VERSION_base(4,8,0))
     return a = StateT $ \ s -> return (a, s)
     {-# INLINE return #-}
@@ -233,18 +253,30 @@ instance (Monad m) => Monad (StateT s m) where
 #endif
 
 #if MIN_VERSION_base(4,9,0)
-instance (Fail.MonadFail m) => Fail.MonadFail (StateT s m) where
+instance (Fail.MonadFail m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => Fail.MonadFail (StateT s m) where
     fail str = StateT $ \ _ -> Fail.fail str
     {-# INLINE fail #-}
 #endif
 
-instance (MonadPlus m) => MonadPlus (StateT s m) where
+instance (MonadPlus m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => MonadPlus (StateT s m) where
     mzero       = StateT $ \ _ -> mzero
     {-# INLINE mzero #-}
     StateT m `mplus` StateT n = StateT $ \ s -> m s `mplus` n s
     {-# INLINE mplus #-}
 
-instance (MonadFix m) => MonadFix (StateT s m) where
+instance (MonadFix m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => MonadFix (StateT s m) where
     mfix f = StateT $ \ s -> mfix $ \ ~(a, _) -> runStateT (f a) s
     {-# INLINE mfix #-}
 
@@ -254,7 +286,11 @@ instance MonadTrans (StateT s) where
         return (a, s)
     {-# INLINE lift #-}
 
-instance (MonadIO m) => MonadIO (StateT s m) where
+instance (MonadIO m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+         ) => MonadIO (StateT s m) where
     liftIO = lift . liftIO
     {-# INLINE liftIO #-}
 
@@ -287,7 +323,11 @@ modify f = state $ \ s -> ((), f s)
 -- new state.
 --
 -- * @'modify'' f = 'get' >>= (('$!') 'put' . f)@
-modify' :: (Monad m) => (s -> s) -> StateT s m ()
+modify' :: (Monad m
+#if MIN_VERSION_base(4,14,0)
+         , Total m
+#endif
+           ) => (s -> s) -> StateT s m ()
 modify' f = do
     s <- get
     put $! f s

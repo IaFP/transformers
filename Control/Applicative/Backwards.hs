@@ -1,12 +1,17 @@
 {-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__ >= 702
+#if __GLASGOW_HASKELL__ >= 702 && __GLASGOW_HASKELL__ < 810
 {-# LANGUAGE Safe #-}
+#else
+{-# LANGUAGE Trustworthy #-}
 #endif
 #if __GLASGOW_HASKELL__ >= 706
 {-# LANGUAGE PolyKinds #-}
 #endif
 #if __GLASGOW_HASKELL__ >= 710
 {-# LANGUAGE AutoDeriveTypeable #-}
+#endif
+#if MIN_VERSION_base(4,14,0)
+{-# LANGUAGE PartialTypeConstructors, TypeOperators, UndecidableInstances #-}
 #endif
 -----------------------------------------------------------------------------
 -- |
@@ -30,6 +35,9 @@ import Data.Functor.Classes
 #if MIN_VERSION_base(4,12,0)
 import Data.Functor.Contravariant
 #endif
+#if MIN_VERSION_base(4,14,0)
+import GHC.Types (type (@@), Total)
+#endif
 
 import Prelude hiding (foldr, foldr1, foldl, foldl1, null, length)
 import Control.Applicative
@@ -39,6 +47,9 @@ import Data.Traversable
 -- | The same functor, but with an 'Applicative' instance that performs
 -- actions in the reverse order.
 newtype Backwards f a = Backwards { forwards :: f a }
+#if MIN_VERSION_base(4,14,0)
+instance Total (Backwards f)
+#endif
 
 instance (Eq1 f) => Eq1 (Backwards f) where
     liftEq eq (Backwards x) (Backwards y) = liftEq eq x y
@@ -56,10 +67,26 @@ instance (Show1 f) => Show1 (Backwards f) where
     liftShowsPrec sp sl d (Backwards x) =
         showsUnaryWith (liftShowsPrec sp sl) "Backwards" d x
 
-instance (Eq1 f, Eq a) => Eq (Backwards f a) where (==) = eq1
-instance (Ord1 f, Ord a) => Ord (Backwards f a) where compare = compare1
-instance (Read1 f, Read a) => Read (Backwards f a) where readsPrec = readsPrec1
-instance (Show1 f, Show a) => Show (Backwards f a) where showsPrec = showsPrec1
+instance (Eq1 f, Eq a
+#if MIN_VERSION_base(4,14,0)
+         , f @@ a
+#endif
+         ) => Eq (Backwards f a) where (==) = eq1
+instance (Ord1 f, Ord a
+#if MIN_VERSION_base(4,14,0)
+         , f @@ a
+#endif
+         ) => Ord (Backwards f a) where compare = compare1
+instance (Read1 f, Read a
+#if MIN_VERSION_base(4,14,0)
+         , f @@ a
+#endif
+         ) => Read (Backwards f a) where readsPrec = readsPrec1
+instance (Show1 f, Show a
+#if MIN_VERSION_base(4,14,0)
+         , f @@ a
+#endif
+         ) => Show (Backwards f a) where showsPrec = showsPrec1
 
 -- | Derived instance.
 instance (Functor f) => Functor (Backwards f) where
@@ -67,21 +94,33 @@ instance (Functor f) => Functor (Backwards f) where
     {-# INLINE fmap #-}
 
 -- | Apply @f@-actions in the reverse order.
-instance (Applicative f) => Applicative (Backwards f) where
+instance (Applicative f
+#if MIN_VERSION_base(4,14,0)
+         , Total f
+#endif
+         ) => Applicative (Backwards f) where
     pure a = Backwards (pure a)
     {-# INLINE pure #-}
     Backwards f <*> Backwards a = Backwards (a <**> f)
     {-# INLINE (<*>) #-}
 
 -- | Try alternatives in the same order as @f@.
-instance (Alternative f) => Alternative (Backwards f) where
+instance (Alternative f
+#if MIN_VERSION_base(4,14,0)
+         , Total f
+#endif
+         ) => Alternative (Backwards f) where
     empty = Backwards empty
     {-# INLINE empty #-}
     Backwards x <|> Backwards y = Backwards (x <|> y)
     {-# INLINE (<|>) #-}
 
 -- | Derived instance.
-instance (Foldable f) => Foldable (Backwards f) where
+instance (Foldable f
+#if MIN_VERSION_base(4,14,0)
+         , Total f
+#endif
+         ) => Foldable (Backwards f) where
     foldMap f (Backwards t) = foldMap f t
     {-# INLINE foldMap #-}
     foldr f z (Backwards t) = foldr f z t
@@ -98,7 +137,11 @@ instance (Foldable f) => Foldable (Backwards f) where
 #endif
 
 -- | Derived instance.
-instance (Traversable f) => Traversable (Backwards f) where
+instance (Traversable f
+#if MIN_VERSION_base(4,14,0)
+         , Total f
+#endif
+         ) => Traversable (Backwards f) where
     traverse f (Backwards t) = fmap Backwards (traverse f t)
     {-# INLINE traverse #-}
     sequenceA (Backwards t) = fmap Backwards (sequenceA t)
