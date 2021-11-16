@@ -62,6 +62,9 @@ import GHC.Types (type (@@), Total)
 --
 -- /Note:/ this does not yield a monad unless the argument monad is commutative.
 newtype ListT m a = ListT { runListT :: m [a] }
+#if MIN_VERSION_base(4,14,0)
+instance Total m => Total (ListT m)
+#endif
 
 instance (Eq1 m) => Eq1 (ListT m) where
     liftEq eq (ListT x) (ListT y) = liftEq (liftEq eq) x y

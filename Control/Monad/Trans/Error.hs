@@ -175,6 +175,9 @@ instance ErrorList Char where
 -- The 'return' function yields a successful computation, while @>>=@
 -- sequences two subcomputations, failing on the first error.
 newtype ErrorT e m a = ErrorT { runErrorT :: m (Either e a) }
+#if MIN_VERSION_base(4,14,0)
+instance Total (ErrorT e m)
+#endif
 
 instance (Eq e, Eq1 m) => Eq1 (ErrorT e m) where
     liftEq eq (ErrorT x) (ErrorT y) = liftEq (liftEq eq) x y

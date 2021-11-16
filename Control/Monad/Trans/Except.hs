@@ -127,6 +127,9 @@ withExcept = withExceptT
 -- value, while @>>=@ sequences two subcomputations, exiting on the
 -- first exception.
 newtype ExceptT e m a = ExceptT (m (Either e a))
+#if MIN_VERSION_base(4,14,0)
+instance Total (ExceptT e m)
+#endif
 
 instance (Eq e, Eq1 m) => Eq1 (ExceptT e m) where
     liftEq eq (ExceptT x) (ExceptT y) = liftEq (liftEq eq) x y

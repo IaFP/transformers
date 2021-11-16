@@ -63,6 +63,10 @@ import GHC.Types (type (@@), Total)
 
 -- | The trivial monad transformer, which maps a monad to an equivalent monad.
 newtype IdentityT f a = IdentityT { runIdentityT :: f a }
+#if MIN_VERSION_base(4,14,0)
+instance Total (IdentityT f)
+#endif
+
 
 instance (Eq1 f) => Eq1 (IdentityT f) where
     liftEq eq (IdentityT x) (IdentityT y) = liftEq eq x y

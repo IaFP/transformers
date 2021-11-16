@@ -1,6 +1,8 @@
 {-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__ >= 702
+#if __GLASGOW_HASKELL__ >= 702 &&  __GLASGOW_HASKELL__ < 810
 {-# LANGUAGE Safe #-}
+#else
+{-# LANGUAGE Trustworthy #-}
 #endif
 #if __GLASGOW_HASKELL__ >= 706
 {-# LANGUAGE PolyKinds #-}
@@ -49,10 +51,15 @@ import Data.Bifoldable (Bifoldable(..))
 import Data.Bitraversable (Bitraversable(..))
 #endif
 import Prelude hiding (null, length)
-
+#if MIN_VERSION_base(4,14,0)
+import GHC.Types (Total)  
+#endif
 -- | Constant functor.
 newtype Constant a b = Constant { getConstant :: a }
     deriving (Eq, Ord)
+#if MIN_VERSION_base(4,14,0)
+instance Total (Constant a)
+#endif
 
 -- These instances would be equivalent to the derived instances of the
 -- newtype if the field were removed.

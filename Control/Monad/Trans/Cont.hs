@@ -142,6 +142,9 @@ shift f = shiftT (f . (runIdentity .))
 -- 'ContT' is not a functor on the category of monads, and many operations
 -- cannot be lifted through it.
 newtype ContT r m a = ContT { runContT :: (a -> m r) -> m r }
+#if MIN_VERSION_base(4,14,0)
+instance Total (ContT r m)
+#endif
 
 -- | The result of running a CPS computation with 'return' as the
 -- final continuation.
@@ -169,11 +172,19 @@ withContT :: ((b -> m r) -> (a -> m r)) -> ContT r m a -> ContT r m b
 withContT f m = ContT $ runContT m . f
 {-# INLINE withContT #-}
 
-instance Functor (ContT r m) where
+instance
+#if MIN_VERSION_base(4,14,0)
+  (m @@ r) =>
+#endif
+  Functor (ContT r m) where
     fmap f m = ContT $ \ c -> runContT m (c . f)
     {-# INLINE fmap #-}
 
-instance Applicative (ContT r m) where
+instance
+#if MIN_VERSION_base(4,14,0)
+  (m @@ r) =>
+#endif
+  Applicative (ContT r m) where
     pure x  = ContT ($ x)
     {-# INLINE pure #-}
     f <*> v = ContT $ \ c -> runContT f $ \ g -> runContT v (c . g)
@@ -181,7 +192,11 @@ instance Applicative (ContT r m) where
     m *> k = m >>= \_ -> k
     {-# INLINE (*>) #-}
 
-instance Monad (ContT r m) where
+instance
+#if MIN_VERSION_base(4,14,0)
+  (m @@ r) =>
+#endif
+  Monad (ContT r m) where
 #if !(MIN_VERSION_base(4,8,0))
     return x = ContT ($ x)
     {-# INLINE return #-}
@@ -234,7 +249,11 @@ callCC f = ContT $ \ c -> runContT (f (\ x -> ContT $ \ _ -> c x)) c
 --
 -- * @'resetT' ('lift' m) = 'lift' m@
 --
-resetT :: (Monad m) => ContT r m r -> ContT r' m r
+resetT :: (Monad m
+#if MIN_VERSION_base(4,14,0)
+          , m @@ r, m @@ r'
+#endif
+          ) => ContT r m r -> ContT r' m r
 resetT = lift . evalContT
 {-# INLINE resetT #-}
 

@@ -11,7 +11,7 @@
 {-# LANGUAGE AutoDeriveTypeable #-}
 #endif
 #if MIN_VERSION_base(4,14,0)
-{-# LANGUAGE PartialTypeConstructors, TypeOperators, UndecidableInstances #-}
+{-# LANGUAGE PartialTypeConstructors, TypeOperators, UndecidableInstances, RankNTypes #-}
 #endif
 -----------------------------------------------------------------------------
 -- |
@@ -53,6 +53,9 @@ import GHC.Types (type (@@), Total)
 -- | The same functor, but with 'Foldable' and 'Traversable' instances
 -- that process the elements in the reverse order.
 newtype Reverse f a = Reverse { getReverse :: f a }
+#if MIN_VERSION_base(4,14,0)
+instance Total (Reverse f)
+#endif
 
 instance (Eq1 f) => Eq1 (Reverse f) where
     liftEq eq (Reverse x) (Reverse y) = liftEq eq x y

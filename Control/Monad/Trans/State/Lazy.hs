@@ -167,6 +167,9 @@ withState = withStateT
 -- the final state of the first computation as the initial state of
 -- the second.
 newtype StateT s m a = StateT { runStateT :: s -> m (a,s) }
+#if MIN_VERSION_base(4,14,0)
+instance Total (StateT s m)
+#endif
 
 -- | Evaluate a state computation with the given initial state
 -- and return the final value, discarding the final state.

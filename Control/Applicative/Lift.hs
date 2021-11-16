@@ -50,6 +50,9 @@ import GHC.Types (type (@@), Total)
 -- | Applicative functor formed by adding pure computations to a given
 -- applicative functor.
 data Lift f a = Pure a | Other (f a)
+#if MIN_VERSION_base(4,14,0)
+instance Total (Lift f)
+#endif
 
 instance (Eq1 f) => Eq1 (Lift f) where
     liftEq eq (Pure x1) (Pure x2) = eq x1 x2

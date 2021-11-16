@@ -89,6 +89,9 @@ mapSelect f = mapSelectT (Identity . f . runIdentity)
 -- 'SelectT' is not a functor on the category of monads, and many operations
 -- cannot be lifted through it.
 newtype SelectT r m a = SelectT ((a -> m r) -> m a)
+#if MIN_VERSION_base(4,14,0)
+instance Total (SelectT r m)
+#endif
 
 -- | Runs a @SelectT@ computation with a function for evaluating answers
 -- to select a particular answer.  (The inverse of 'select'.)
@@ -106,7 +109,11 @@ mapSelectT :: (m a -> m a) -> SelectT r m a -> SelectT r m a
 mapSelectT f m = SelectT $ f . runSelectT m
 {-# INLINE mapSelectT #-}
 
-instance (Functor m) => Functor (SelectT r m) where
+instance (Functor m
+#if MIN_VERSION_base(4,14,0)
+         , m @@ r
+#endif
+         ) => Functor (SelectT r m) where
     fmap f (SelectT g) = SelectT (fmap f . g . (. f))
     {-# INLINE fmap #-}
 

@@ -146,6 +146,9 @@ withRWS = withRWST
 -- collecting an output of type @w@ and updating a state of type @s@
 -- to an inner monad @m@.
 newtype RWST r w s m a = RWST { runRWST :: r -> s -> m (a, s, w) }
+#if MIN_VERSION_base(4,14,0)
+instance Total (RWST r w s m)
+#endif
 
 -- | Evaluate a computation with the given initial state and environment,
 -- returning the final value and output, discarding the final state.

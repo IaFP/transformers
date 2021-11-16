@@ -128,6 +128,9 @@ mapWriter f = mapWriterT (Identity . f . runIdentity)
 -- The 'return' function produces the output 'mempty', while @>>=@
 -- combines the outputs of the subcomputations using 'mappend'.
 newtype WriterT w m a = WriterT { runWriterT :: m (a, w) }
+#if MIN_VERSION_base(4,14,0)
+instance Total (WriterT w m)
+#endif
 
 instance (Eq w, Eq1 m) => Eq1 (WriterT w m) where
     liftEq eq (WriterT m1) (WriterT m2) = liftEq (liftEq2 eq (==)) m1 m2

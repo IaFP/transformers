@@ -138,6 +138,9 @@ mapAccum f = mapAccumT (Identity . f . runIdentity)
 --
 --  * a writer monad transformer with the extra ability to read all previous output.
 newtype AccumT w m a = AccumT (w -> m (a, w))
+#if MIN_VERSION_base(4,14,0)
+instance Total (AccumT w m)
+#endif
 
 -- | Unwrap an accumulation computation.
 runAccumT :: AccumT w m a -> w -> m (a, w)

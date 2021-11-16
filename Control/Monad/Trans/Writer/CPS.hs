@@ -125,6 +125,9 @@ mapWriter f = mapWriterT (Identity . f . runIdentity)
 -- combines the outputs of the subcomputations using 'mappend'.
 
 newtype WriterT w m a = WriterT { unWriterT :: w -> m (a, w) }
+#if MIN_VERSION_base(4,14,0)
+instance Total (WriterT w m)
+#endif
 
 -- | Construct a writer computation from a (result, output) computation.
 -- (The inverse of 'runWriterT'.)
@@ -160,7 +163,10 @@ mapWriterT f m = WriterT $ \ w -> do
     wt `seq` return (a, wt)
 {-# INLINE mapWriterT #-}
 
-instance (Functor m) => Functor (WriterT w m) where
+instance (Functor m
+#if MIN_VERSION_base(4,14,0)
+#endif
+         ) => Functor (WriterT w m) where
     fmap f m = WriterT $ \ w -> (\ (a, w') -> (f a, w')) <$> unWriterT m w
     {-# INLINE fmap #-}
 

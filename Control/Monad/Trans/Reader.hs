@@ -119,6 +119,9 @@ withReader = withReaderT
 -- The 'return' function ignores the environment, while @>>=@ passes
 -- the inherited environment to both subcomputations.
 newtype ReaderT r m a = ReaderT { runReaderT :: r -> m a }
+#if MIN_VERSION_base(4,14,0)
+instance Total (ReaderT r m)
+#endif
 
 -- | Transform the computation inside a @ReaderT@.
 --
