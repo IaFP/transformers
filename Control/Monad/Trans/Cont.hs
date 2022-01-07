@@ -1,12 +1,17 @@
 {-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__ >= 702
+#if __GLASGOW_HASKELL__ >= 702 &&  __GLASGOW_HASKELL__ < 902
 {-# LANGUAGE Safe #-}
+#else
+{-# LANGUAGE Trustworthy #-}
 #endif
 #if __GLASGOW_HASKELL__ >= 706
 {-# LANGUAGE PolyKinds #-}
 #endif
 #if __GLASGOW_HASKELL__ >= 710
 {-# LANGUAGE AutoDeriveTypeable #-}
+#endif
+#if MIN_VERSION_base(4,16,0)
+{-# LANGUAGE QuantifiedConstraints, ExplicitNamespaces #-}
 #endif
 -----------------------------------------------------------------------------
 -- |
@@ -55,6 +60,9 @@ import Data.Functor.Identity
 import Control.Applicative
 #if MIN_VERSION_base(4,9,0)
 import qualified Control.Monad.Fail as Fail
+#endif
+#if MIN_VERSION_base(4,16,0)
+import GHC.Types (type (@), Total)
 #endif
 
 {- |
@@ -182,7 +190,11 @@ instance Monad (ContT r m) where
     {-# INLINE (>>=) #-}
 
 #if MIN_VERSION_base(4,9,0)
-instance (Fail.MonadFail m) => Fail.MonadFail (ContT r m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+  m @ r,
+#endif
+  Fail.MonadFail m) => Fail.MonadFail (ContT r m) where
     fail msg = ContT $ \ _ -> Fail.fail msg
     {-# INLINE fail #-}
 #endif
@@ -191,7 +203,11 @@ instance MonadTrans (ContT r) where
     lift m = ContT (m >>=)
     {-# INLINE lift #-}
 
-instance (MonadIO m) => MonadIO (ContT r m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+  Total m,
+#endif
+  MonadIO m) => MonadIO (ContT r m) where
     liftIO = lift . liftIO
     {-# INLINE liftIO #-}
 
@@ -218,7 +234,11 @@ callCC f = ContT $ \ c -> runContT (f (\ x -> ContT $ \ _ -> c x)) c
 --
 -- * @'resetT' ('lift' m) = 'lift' m@
 --
-resetT :: (Monad m) => ContT r m r -> ContT r' m r
+resetT :: (
+#if MIN_VERSION_base(4,16,0)
+  Total m, 
+#endif
+  Monad m) => ContT r m r -> ContT r' m r
 resetT = lift . evalContT
 {-# INLINE resetT #-}
 

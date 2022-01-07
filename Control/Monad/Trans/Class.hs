@@ -1,9 +1,14 @@
 {-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__ >= 702
+#if __GLASGOW_HASKELL__ >= 702 &&  __GLASGOW_HASKELL__ < 902
 {-# LANGUAGE Safe #-}
+#else
+{-# LANGUAGE Trustworthy #-}
 #endif
 #if __GLASGOW_HASKELL__ >= 710
 {-# LANGUAGE AutoDeriveTypeable #-}
+#endif
+#if __GLASGOW_HASKELL__ >= 903
+{-# LANGUAGE QuantifiedConstraints #-}
 #endif
 -----------------------------------------------------------------------------
 -- |
@@ -45,6 +50,9 @@ module Control.Monad.Trans.Class (
     -- ** Interpreter monad
     -- $example3
   ) where
+#if MIN_VERSION_base(4,16,0)
+import GHC.Types (Total)
+#endif
 
 -- | The class of monad transformers.  Instances should satisfy the
 -- following laws, which state that 'lift' is a monad transformation:
@@ -55,7 +63,11 @@ module Control.Monad.Trans.Class (
 
 class MonadTrans t where
     -- | Lift a computation from the argument monad to the constructed monad.
-    lift :: (Monad m) => m a -> t m a
+    lift :: (
+#if MIN_VERSION_base(4,16,0)
+            Total m, 
+#endif
+            Monad m) => m a -> t m a
 
 {- $conventions
 Most monad transformer modules include the special case of applying

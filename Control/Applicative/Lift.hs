@@ -1,9 +1,14 @@
 {-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__ >= 702
+#if __GLASGOW_HASKELL__ >= 702 && __GLASGOW_HASKELL__ <= 902
 {-# LANGUAGE Safe #-}
+#else  
+{-# LANGUAGE Trustworthy #-}
 #endif
 #if __GLASGOW_HASKELL__ >= 710
 {-# LANGUAGE AutoDeriveTypeable #-}
+#endif
+#if MIN_VERSION_base(4,16,0)
+{-# LANGUAGE TypeOperators, QuantifiedConstraints, ExplicitNamespaces #-}
 #endif
 -----------------------------------------------------------------------------
 -- |
@@ -38,6 +43,9 @@ import Data.Foldable (Foldable(foldMap))
 import Data.Functor.Constant
 import Data.Monoid (Monoid(..))
 import Data.Traversable (Traversable(traverse))
+#if MIN_VERSION_base(4,16,0)
+import GHC.Types (Total)
+#endif
 
 -- | Applicative functor formed by adding pure computations to a given
 -- applicative functor.
@@ -88,7 +96,11 @@ instance (Traversable f) => Traversable (Lift f) where
     {-# INLINE traverse #-}
 
 -- | A combination is 'Pure' only if both parts are.
-instance (Applicative f) => Applicative (Lift f) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+  Total f, 
+#endif
+  Applicative f) => Applicative (Lift f) where
     pure = Pure
     {-# INLINE pure #-}
     Pure f <*> Pure x = Pure (f x)
@@ -98,7 +110,11 @@ instance (Applicative f) => Applicative (Lift f) where
     {-# INLINE (<*>) #-}
 
 -- | A combination is 'Pure' only either part is.
-instance (Alternative f) => Alternative (Lift f) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+  Total f, 
+#endif
+  Alternative f) => Alternative (Lift f) where
     empty = Other empty
     {-# INLINE empty #-}
     Pure x <|> _ = Pure x
