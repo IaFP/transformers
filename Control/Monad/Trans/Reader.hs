@@ -1,6 +1,9 @@
 {-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__ >= 702
+#if __GLASGOW_HASKELL__ >= 702 && __GLASGOW_HASKELL__ < 903
 {-# LANGUAGE Safe #-}
+#else
+{-# LANGUAGE Trustworthy #-}
+{-# LANGUAGE QuantifiedConstraints, ExplicitNamespaces, TypeOperators #-}
 #endif
 #if __GLASGOW_HASKELL__ >= 710
 {-# LANGUAGE AutoDeriveTypeable #-}
@@ -66,6 +69,9 @@ import Control.Monad.Zip (MonadZip(mzipWith))
 #if MIN_VERSION_base(4,2,0)
 import Data.Functor(Functor(..))
 #endif
+#if MIN_VERSION_base(4,16,0)
+import GHC.Types (Total, type(@))
+#endif
 
 -- | The parameterizable reader monad.
 --
@@ -76,7 +82,11 @@ import Data.Functor(Functor(..))
 type Reader r = ReaderT r Identity
 
 -- | Constructor for computations in the reader monad (equivalent to 'asks').
-reader :: (Monad m) => (r -> a) -> ReaderT r m a
+reader :: (
+#if MIN_VERSION_base(4,16,0)
+   m @ a,
+#endif  
+    Monad m) => (r -> a) -> ReaderT r m a
 reader f = ReaderT (return . f)
 {-# INLINE reader #-}
 
@@ -112,7 +122,11 @@ withReader = withReaderT
 --
 -- The 'return' function ignores the environment, while @>>=@ passes
 -- the inherited environment to both subcomputations.
-newtype ReaderT r m a = ReaderT { runReaderT :: r -> m a }
+newtype 
+#if MIN_VERSION_base(4,16,0)
+  m @ a =>
+#endif
+ ReaderT r m a = ReaderT { runReaderT :: r -> m a }
 
 -- | Transform the computation inside a @ReaderT@.
 --
@@ -162,7 +176,11 @@ instance (Alternative m) => Alternative (ReaderT r m) where
     m <|> n = ReaderT $ \ r -> runReaderT m r <|> runReaderT n r
     {-# INLINE (<|>) #-}
 
-instance (Monad m) => Monad (ReaderT r m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Monad m) => Monad (ReaderT r m) where
 #if !(MIN_VERSION_base(4,8,0))
     return   = lift . return
     {-# INLINE return #-}
@@ -183,18 +201,30 @@ instance (Monad m) => Monad (ReaderT r m) where
 #endif
 
 #if MIN_VERSION_base(4,9,0)
-instance (Fail.MonadFail m) => Fail.MonadFail (ReaderT r m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Fail.MonadFail m) => Fail.MonadFail (ReaderT r m) where
     fail msg = lift (Fail.fail msg)
     {-# INLINE fail #-}
 #endif
 
-instance (MonadPlus m) => MonadPlus (ReaderT r m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       MonadPlus m) => MonadPlus (ReaderT r m) where
     mzero       = lift mzero
     {-# INLINE mzero #-}
     m `mplus` n = ReaderT $ \ r -> runReaderT m r `mplus` runReaderT n r
     {-# INLINE mplus #-}
 
-instance (MonadFix m) => MonadFix (ReaderT r m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       MonadFix m) => MonadFix (ReaderT r m) where
     mfix f = ReaderT $ \ r -> mfix $ \ a -> runReaderT (f a) r
     {-# INLINE mfix #-}
 
@@ -202,12 +232,20 @@ instance MonadTrans (ReaderT r) where
     lift   = liftReaderT
     {-# INLINE lift #-}
 
-instance (MonadIO m) => MonadIO (ReaderT r m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       MonadIO m) => MonadIO (ReaderT r m) where
     liftIO = lift . liftIO
     {-# INLINE liftIO #-}
 
 #if MIN_VERSION_base(4,4,0)
-instance (MonadZip m) => MonadZip (ReaderT r m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       MonadZip m) => MonadZip (ReaderT r m) where
     mzipWith f (ReaderT m) (ReaderT n) = ReaderT $ \ a ->
         mzipWith f (m a) (n a)
     {-# INLINE mzipWith #-}
@@ -224,7 +262,11 @@ liftReaderT m = ReaderT (const m)
 {-# INLINE liftReaderT #-}
 
 -- | Fetch the value of the environment.
-ask :: (Monad m) => ReaderT r m r
+ask :: (
+#if MIN_VERSION_base(4,16,0)
+   m @ r,
+#endif  
+    Monad m) => ReaderT r m r
 ask = ReaderT return
 {-# INLINE ask #-}
 
@@ -242,7 +284,11 @@ local = withReaderT
 -- | Retrieve a function of the current environment.
 --
 -- * @'asks' f = 'liftM' f 'ask'@
-asks :: (Monad m)
+asks :: (
+#if MIN_VERSION_base(4,16,0)
+   m @ a,
+#endif  
+    Monad m)
     => (r -> a)         -- ^ The selector function to apply to the environment.
     -> ReaderT r m a
 asks f = ReaderT (return . f)

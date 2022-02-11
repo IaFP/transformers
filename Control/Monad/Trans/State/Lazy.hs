@@ -1,9 +1,14 @@
 {-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__ >= 702
+#if __GLASGOW_HASKELL__ >= 702 && __GLASGOW_HASKELL__ < 903
 {-# LANGUAGE Safe #-}
+#else
+{-# LANGUAGE Trustworthy #-}
 #endif
 #if __GLASGOW_HASKELL__ >= 710
 {-# LANGUAGE AutoDeriveTypeable #-}
+#endif
+#if MIN_VERSION_base(4,16,0)
+{-# LANGUAGE QuantifiedConstraints, RankNTypes, ExplicitNamespaces, TypeOperators #-}
 #endif
 -----------------------------------------------------------------------------
 -- |
@@ -87,6 +92,9 @@ import Control.Monad
 import qualified Control.Monad.Fail as Fail
 #endif
 import Control.Monad.Fix
+#if MIN_VERSION_base(4,16,0)
+import GHC.Types (type(@), Total)
+#endif
 
 -- ---------------------------------------------------------------------------
 -- | A state monad parameterized by the type @s@ of the state to carry.
@@ -98,7 +106,11 @@ type State s = StateT s Identity
 
 -- | Construct a state monad computation from a function.
 -- (The inverse of 'runState'.)
-state :: (Monad m)
+state :: (
+#if MIN_VERSION_base(4,16,0)
+  m @ (a, s),
+#endif 
+  Monad m)
       => (s -> (a, s))  -- ^pure state transformer
       -> StateT s m a   -- ^equivalent state-passing computation
 state f = StateT (return . f)
@@ -158,13 +170,21 @@ withState = withStateT
 -- The 'return' function leaves the state unchanged, while @>>=@ uses
 -- the final state of the first computation as the initial state of
 -- the second.
-newtype StateT s m a = StateT { runStateT :: s -> m (a,s) }
+newtype
+#if MIN_VERSION_base(4,16,0)
+  m @ (a, s) =>
+#endif
+ StateT s m a = StateT { runStateT :: s -> m (a,s) }
 
 -- | Evaluate a state computation with the given initial state
 -- and return the final value, discarding the final state.
 --
 -- * @'evalStateT' m s = 'liftM' 'fst' ('runStateT' m s)@
-evalStateT :: (Monad m) => StateT s m a -> s -> m a
+evalStateT :: (
+#if MIN_VERSION_base(4,16,0)
+  m @ (a, s),
+#endif 
+  Monad m) => StateT s m a -> s -> m a
 evalStateT m s = do
     ~(a, _) <- runStateT m s
     return a
@@ -174,7 +194,11 @@ evalStateT m s = do
 -- and return the final state, discarding the final value.
 --
 -- * @'execStateT' m s = 'liftM' 'snd' ('runStateT' m s)@
-execStateT :: (Monad m) => StateT s m a -> s -> m s
+execStateT :: (
+#if MIN_VERSION_base(4,16,0)
+  m @ (a, s),
+#endif 
+  Monad m) => StateT s m a -> s -> m s
 execStateT m s = do
     ~(_, s') <- runStateT m s
     return s'
@@ -201,7 +225,11 @@ instance (Functor m) => Functor (StateT s m) where
         fmap (\ ~(a, s') -> (f a, s')) $ runStateT m s
     {-# INLINE fmap #-}
 
-instance (Functor m, Monad m) => Applicative (StateT s m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Functor m, Monad m) => Applicative (StateT s m) where
     pure a = StateT $ \ s -> return (a, s)
     {-# INLINE pure #-}
     StateT mf <*> StateT mx = StateT $ \ s -> do
@@ -212,13 +240,21 @@ instance (Functor m, Monad m) => Applicative (StateT s m) where
     m *> k = m >>= \_ -> k
     {-# INLINE (*>) #-}
 
-instance (Functor m, MonadPlus m) => Alternative (StateT s m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+          Total m,
+#endif
+          Functor m, MonadPlus m) => Alternative (StateT s m) where
     empty = StateT $ \ _ -> mzero
     {-# INLINE empty #-}
     StateT m <|> StateT n = StateT $ \ s -> m s `mplus` n s
     {-# INLINE (<|>) #-}
 
-instance (Monad m) => Monad (StateT s m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+          Total m,
+#endif
+          Monad m) => Monad (StateT s m) where
 #if !(MIN_VERSION_base(4,8,0))
     return a = StateT $ \ s -> return (a, s)
     {-# INLINE return #-}
@@ -233,18 +269,30 @@ instance (Monad m) => Monad (StateT s m) where
 #endif
 
 #if MIN_VERSION_base(4,9,0)
-instance (Fail.MonadFail m) => Fail.MonadFail (StateT s m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Fail.MonadFail m) => Fail.MonadFail (StateT s m) where
     fail str = StateT $ \ _ -> Fail.fail str
     {-# INLINE fail #-}
 #endif
 
-instance (MonadPlus m) => MonadPlus (StateT s m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       MonadPlus m) => MonadPlus (StateT s m) where
     mzero       = StateT $ \ _ -> mzero
     {-# INLINE mzero #-}
     StateT m `mplus` StateT n = StateT $ \ s -> m s `mplus` n s
     {-# INLINE mplus #-}
 
-instance (MonadFix m) => MonadFix (StateT s m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       MonadFix m) => MonadFix (StateT s m) where
     mfix f = StateT $ \ s -> mfix $ \ ~(a, _) -> runStateT (f a) s
     {-# INLINE mfix #-}
 
@@ -254,7 +302,11 @@ instance MonadTrans (StateT s) where
         return (a, s)
     {-# INLINE lift #-}
 
-instance (MonadIO m) => MonadIO (StateT s m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       MonadIO m) => MonadIO (StateT s m) where
     liftIO = lift . liftIO
     {-# INLINE liftIO #-}
 
@@ -266,12 +318,20 @@ instance Contravariant m => Contravariant (StateT s m) where
 #endif
 
 -- | Fetch the current value of the state within the monad.
-get :: (Monad m) => StateT s m s
+get :: (
+#if MIN_VERSION_base(4,16,0)
+  m @ (s, s),
+#endif 
+    Monad m) => StateT s m s
 get = state $ \ s -> (s, s)
 {-# INLINE get #-}
 
 -- | @'put' s@ sets the state within the monad to @s@.
-put :: (Monad m) => s -> StateT s m ()
+put :: (
+#if MIN_VERSION_base(4,16,0)
+  m @ ((), s),
+#endif 
+  Monad m) => s -> StateT s m ()
 put s = state $ \ _ -> ((), s)
 {-# INLINE put #-}
 
@@ -279,7 +339,11 @@ put s = state $ \ _ -> ((), s)
 -- applying @f@ to the current state.
 --
 -- * @'modify' f = 'get' >>= ('put' . f)@
-modify :: (Monad m) => (s -> s) -> StateT s m ()
+modify :: (
+#if MIN_VERSION_base(4,16,0)
+  m @ ((), s),
+#endif 
+    Monad m) => (s -> s) -> StateT s m ()
 modify f = state $ \ s -> ((), f s)
 {-# INLINE modify #-}
 
@@ -287,7 +351,11 @@ modify f = state $ \ s -> ((), f s)
 -- new state.
 --
 -- * @'modify'' f = 'get' >>= (('$!') 'put' . f)@
-modify' :: (Monad m) => (s -> s) -> StateT s m ()
+modify' :: (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Monad m) => (s -> s) -> StateT s m ()
 modify' f = do
     s <- get
     put $! f s
@@ -297,7 +365,11 @@ modify' f = do
 -- supplied.
 --
 -- * @'gets' f = 'liftM' f 'get'@
-gets :: (Monad m) => (s -> a) -> StateT s m a
+gets :: (
+#if MIN_VERSION_base(4,16,0)
+  m @ (a, s),
+#endif 
+  Monad m) => (s -> a) -> StateT s m a
 gets f = state $ \ s -> (f s, s)
 {-# INLINE gets #-}
 
@@ -326,14 +398,22 @@ liftCatch catchE m h =
 {-# INLINE liftCatch #-}
 
 -- | Lift a @listen@ operation to the new monad.
-liftListen :: (Monad m) => Listen w m (a,s) -> Listen w (StateT s m) a
+liftListen :: (
+#if MIN_VERSION_base(4,16,0)
+                Total m,
+#endif
+  Monad m) => Listen w m (a,s) -> Listen w (StateT s m) a
 liftListen listen m = StateT $ \ s -> do
     ~((a, s'), w) <- listen (runStateT m s)
     return ((a, w), s')
 {-# INLINE liftListen #-}
 
 -- | Lift a @pass@ operation to the new monad.
-liftPass :: (Monad m) => Pass w m (a,s) -> Pass w (StateT s m) a
+liftPass :: (
+#if MIN_VERSION_base(4,16,0)
+                Total m,
+#endif
+  Monad m) => Pass w m (a,s) -> Pass w (StateT s m) a
 liftPass pass m = StateT $ \ s -> pass $ do
     ~((a, f), s') <- runStateT m s
     return ((a, s'), f)

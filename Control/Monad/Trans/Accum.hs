@@ -1,6 +1,9 @@
 {-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__ >= 702
+#if __GLASGOW_HASKELL__ >= 702 && __GLASGOW_HASKELL__ < 903
 {-# LANGUAGE Safe #-}
+#else
+{-# LANGUAGE Trustworthy #-}
+{-# LANGUAGE QuantifiedConstraints, ExplicitNamespaces, TypeOperators #-}
 #endif
 #if __GLASGOW_HASKELL__ >= 710
 {-# LANGUAGE AutoDeriveTypeable #-}
@@ -70,6 +73,9 @@ import Control.Monad.Signatures
 #if !MIN_VERSION_base(4,8,0)
 import Data.Monoid
 #endif
+#if MIN_VERSION_base(4,16,0)
+import GHC.Types (type(@), Total )
+#endif
 
 -- ---------------------------------------------------------------------------
 -- | An accumulation monad parameterized by the type @w@ of output to accumulate.
@@ -129,7 +135,11 @@ mapAccum f = mapAccumT (Identity . f . runIdentity)
 --  * a restricted append-only version of a state monad transformer or
 --
 --  * a writer monad transformer with the extra ability to read all previous output.
-newtype AccumT w m a = AccumT (w -> m (a, w))
+newtype
+#if MIN_VERSION_base(4,16,0)
+  m @ (a, w) => 
+#endif
+  AccumT w m a = AccumT (w -> m (a, w))
 
 -- | Unwrap an accumulation computation.
 runAccumT :: AccumT w m a -> w -> m (a, w)
@@ -149,7 +159,11 @@ execAccumT m w = do
 -- and return the final value, discarding the final output.
 --
 -- * @'evalAccumT' m w = 'liftM' 'fst' ('runAccumT' m w)@
-evalAccumT :: (Monad m, Monoid w) => AccumT w m a -> w -> m a
+evalAccumT :: (
+-- #if MIN_VERSION_base(4,16,0)
+--   m @ (a, w),
+-- #endif
+  Monad m, Monoid w) => AccumT w m a -> w -> m a
 evalAccumT m w = do
     ~(a, _) <- runAccumT m w
     return a
@@ -167,7 +181,11 @@ instance (Functor m) => Functor (AccumT w m) where
     fmap f = mapAccumT $ fmap $ \ ~(a, w) -> (f a, w)
     {-# INLINE fmap #-}
 
-instance (Monoid w, Functor m, Monad m) => Applicative (AccumT w m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Monoid w, Functor m, Monad m) => Applicative (AccumT w m) where
     pure a  = AccumT $ const $ return (a, mempty)
     {-# INLINE pure #-}
     mf <*> mv = AccumT $ \ w -> do
@@ -176,13 +194,21 @@ instance (Monoid w, Functor m, Monad m) => Applicative (AccumT w m) where
       return (f v, w' `mappend` w'')
     {-# INLINE (<*>) #-}
 
-instance (Monoid w, Functor m, MonadPlus m) => Alternative (AccumT w m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Monoid w, Functor m, MonadPlus m) => Alternative (AccumT w m) where
     empty   = AccumT $ const mzero
     {-# INLINE empty #-}
     m <|> n = AccumT $ \ w -> runAccumT m w `mplus` runAccumT n w
     {-# INLINE (<|>) #-}
 
-instance (Monoid w, Functor m, Monad m) => Monad (AccumT w m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Monoid w, Functor m, Monad m) => Monad (AccumT w m) where
 #if !(MIN_VERSION_base(4,8,0))
     return a  = AccumT $ const $ return (a, mempty)
     {-# INLINE return #-}
@@ -198,18 +224,30 @@ instance (Monoid w, Functor m, Monad m) => Monad (AccumT w m) where
 #endif
 
 #if MIN_VERSION_base(4,9,0)
-instance (Monoid w, Fail.MonadFail m) => Fail.MonadFail (AccumT w m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Monoid w, Fail.MonadFail m) => Fail.MonadFail (AccumT w m) where
     fail msg = AccumT $ const (Fail.fail msg)
     {-# INLINE fail #-}
 #endif
 
-instance (Monoid w, Functor m, MonadPlus m) => MonadPlus (AccumT w m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Monoid w, Functor m, MonadPlus m) => MonadPlus (AccumT w m) where
     mzero       = AccumT $ const mzero
     {-# INLINE mzero #-}
     m `mplus` n = AccumT $ \ w -> runAccumT m w `mplus` runAccumT n w
     {-# INLINE mplus #-}
 
-instance (Monoid w, Functor m, MonadFix m) => MonadFix (AccumT w m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Monoid w, Functor m, MonadFix m) => MonadFix (AccumT w m) where
     mfix m = AccumT $ \ w -> mfix $ \ ~(a, _) -> runAccumT (m a) w
     {-# INLINE mfix #-}
 
@@ -219,16 +257,28 @@ instance (Monoid w) => MonadTrans (AccumT w) where
         return (a, mempty)
     {-# INLINE lift #-}
 
-instance (Monoid w, Functor m, MonadIO m) => MonadIO (AccumT w m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Monoid w, Functor m, MonadIO m) => MonadIO (AccumT w m) where
     liftIO = lift . liftIO
     {-# INLINE liftIO #-}
 
 -- | @'look'@ is an action that fetches all the previously accumulated output.
-look :: (Monoid w, Monad m) => AccumT w m w
+look :: (
+-- #if MIN_VERSION_base(4,16,0)
+--   m @ (w, w),
+-- #endif
+  Monoid w, Monad m) => AccumT w m w
 look = AccumT $ \ w -> return (w, mempty)
 
 -- | @'look'@ is an action that retrieves a function of the previously accumulated output.
-looks :: (Monoid w, Monad m) => (w -> a) -> AccumT w m a
+looks :: (
+-- #if MIN_VERSION_base(4,16,0)
+--   m @ (a, w),
+-- #endif
+  Monoid w, Monad m) => (w -> a) -> AccumT w m a
 looks f = AccumT $ \ w -> return (f w, mempty)
 
 -- | @'add' w@ is an action that produces the output @w@.
@@ -261,21 +311,33 @@ liftCatch catchE m h =
 {-# INLINE liftCatch #-}
 
 -- | Lift a @listen@ operation to the new monad.
-liftListen :: (Monad m) => Listen w m (a, s) -> Listen w (AccumT s m) a
+liftListen :: (
+#if MIN_VERSION_base(4,16,0)
+  m @ ((a, s), w),
+#endif
+  Monad m) => Listen w m (a, s) -> Listen w (AccumT s m) a
 liftListen listen m = AccumT $ \ s -> do
     ~((a, s'), w) <- listen (runAccumT m s)
     return ((a, w), s')
 {-# INLINE liftListen #-}
 
 -- | Lift a @pass@ operation to the new monad.
-liftPass :: (Monad m) => Pass w m (a, s) -> Pass w (AccumT s m) a
+liftPass :: (
+#if MIN_VERSION_base(4,16,0)
+  m @ ((a, s), w -> w),
+#endif
+  Monad m) => Pass w m (a, s) -> Pass w (AccumT s m) a
 liftPass pass m = AccumT $ \ s -> pass $ do
     ~((a, f), s') <- runAccumT m s
     return ((a, s'), f)
 {-# INLINE liftPass #-}
 
 -- | Convert a read-only computation into an accumulation computation.
-readerToAccumT :: (Functor m, Monoid w) => ReaderT w m a -> AccumT w m a
+readerToAccumT :: (
+-- #if MIN_VERSION_base(4,16,0)
+--   m @ a, m @ (a, w),
+-- #endif
+  Functor m, Monoid w) => ReaderT w m a -> AccumT w m a
 readerToAccumT (ReaderT f) = AccumT $ \ w -> fmap (\ a -> (a, mempty)) (f w)
 {-# INLINE readerToAccumT #-}
 
@@ -286,7 +348,11 @@ writerToAccumT (WriterT m) = AccumT $ const $ m
 
 -- | Convert an accumulation (append-only) computation into a fully
 -- stateful computation.
-accumToStateT :: (Functor m, Monoid s) => AccumT s m a -> StateT s m a
+accumToStateT :: (
+-- #if MIN_VERSION_base(4,16,0)
+--   m @ (a, s),
+-- #endif
+  Functor m, Monoid s) => AccumT s m a -> StateT s m a
 accumToStateT (AccumT f) =
     StateT $ \ w -> fmap (\ ~(a, w') -> (a, w `mappend` w')) (f w)
 {-# INLINE accumToStateT #-}

@@ -44,12 +44,16 @@ import Data.Functor.Constant
 import Data.Monoid (Monoid(..))
 import Data.Traversable (Traversable(traverse))
 #if MIN_VERSION_base(4,16,0)
-import GHC.Types (Total)
+import GHC.Types (Total, type (@))
 #endif
 
 -- | Applicative functor formed by adding pure computations to a given
 -- applicative functor.
-data Lift f a = Pure a | Other (f a)
+data 
+#if MIN_VERSION_base(4,16,0)
+  f @ a =>
+#endif
+  Lift f a = Pure a | Other (f a)
 
 instance (Eq1 f) => Eq1 (Lift f) where
     liftEq eq (Pure x1) (Pure x2) = eq x1 x2

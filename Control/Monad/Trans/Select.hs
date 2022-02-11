@@ -1,6 +1,9 @@
 {-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__ >= 702
+#if __GLASGOW_HASKELL__ >= 702 && __GLASGOW_HASKELL__ < 903
 {-# LANGUAGE Safe #-}
+#else
+{-# LANGUAGE Trustworthy #-}
+{-# LANGUAGE QuantifiedConstraints, ExplicitNamespaces, TypeOperators#-}
 #endif
 #if __GLASGOW_HASKELL__ >= 706
 {-# LANGUAGE PolyKinds #-}
@@ -54,7 +57,9 @@ import Control.Monad
 import qualified Control.Monad.Fail as Fail
 #endif
 import Data.Functor.Identity
-
+#if MIN_VERSION_base(4,16,0)
+import GHC.Types ( Total, type(@) )
+#endif
 -- | Selection monad.
 type Select r = SelectT r Identity
 
@@ -94,15 +99,27 @@ runSelectT (SelectT g) = g
 -- the category of monads.
 --
 -- * @'runSelectT' ('mapSelectT' f m) = f . 'runSelectT' m@
-mapSelectT :: (m a -> m a) -> SelectT r m a -> SelectT r m a
+mapSelectT :: 
+#if MIN_VERSION_base(4,16,0)
+  m @ r => 
+#endif
+  (m a -> m a) -> SelectT r m a -> SelectT r m a
 mapSelectT f m = SelectT $ f . runSelectT m
 {-# INLINE mapSelectT #-}
 
-instance (Functor m) => Functor (SelectT r m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Functor m) => Functor (SelectT r m) where
     fmap f (SelectT g) = SelectT (fmap f . g . (. f))
     {-# INLINE fmap #-}
 
-instance (Functor m, Monad m) => Applicative (SelectT r m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+      Functor m, Monad m) => Applicative (SelectT r m) where
     pure = lift . return
     {-# INLINE pure #-}
     SelectT gf <*> SelectT gx = SelectT $ \ k -> do
@@ -113,13 +130,21 @@ instance (Functor m, Monad m) => Applicative (SelectT r m) where
     m *> k = m >>= \_ -> k
     {-# INLINE (*>) #-}
 
-instance (Functor m, MonadPlus m) => Alternative (SelectT r m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+      Functor m, MonadPlus m) => Alternative (SelectT r m) where
     empty = mzero
     {-# INLINE empty #-}
     (<|>) = mplus
     {-# INLINE (<|>) #-}
 
-instance (Monad m) => Monad (SelectT r m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+      Monad m) => Monad (SelectT r m) where
 #if !(MIN_VERSION_base(4,8,0))
     return = lift . return
     {-# INLINE return #-}
@@ -131,12 +156,20 @@ instance (Monad m) => Monad (SelectT r m) where
     {-# INLINE (>>=) #-}
 
 #if MIN_VERSION_base(4,9,0)
-instance (Fail.MonadFail m) => Fail.MonadFail (SelectT r m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+      Fail.MonadFail m) => Fail.MonadFail (SelectT r m) where
     fail msg = lift (Fail.fail msg)
     {-# INLINE fail #-}
 #endif
 
-instance (MonadPlus m) => MonadPlus (SelectT r m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+      MonadPlus m) => MonadPlus (SelectT r m) where
     mzero = SelectT (const mzero)
     {-# INLINE mzero #-}
     SelectT f `mplus` SelectT g = SelectT $ \ k -> f k `mplus` g k
@@ -146,16 +179,28 @@ instance MonadTrans (SelectT r) where
     lift = SelectT . const
     {-# INLINE lift #-}
 
-instance (MonadIO m) => MonadIO (SelectT r m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+      MonadIO m) => MonadIO (SelectT r m) where
     liftIO = lift . liftIO
     {-# INLINE liftIO #-}
 
 -- | Convert a selection computation to a continuation-passing computation.
-selectToContT :: (Monad m) => SelectT r m a -> ContT r m a
+selectToContT :: (
+#if MIN_VERSION_base(4,16,0)
+ m @ a, 
+#endif
+  Monad m) => SelectT r m a -> ContT r m a
 selectToContT (SelectT g) = ContT $ \ k -> g k >>= k
 {-# INLINE selectToCont #-}
 
 -- | Deprecated name for 'selectToContT'.
 {-# DEPRECATED selectToCont "Use selectToContT instead" #-}
-selectToCont :: (Monad m) => SelectT r m a -> ContT r m a
+selectToCont :: (
+#if MIN_VERSION_base(4,16,0)
+  m @ a, 
+#endif
+  Monad m) => SelectT r m a -> ContT r m a
 selectToCont = selectToContT

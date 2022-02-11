@@ -8,7 +8,7 @@
 {-# LANGUAGE AutoDeriveTypeable #-}
 #endif
 #if __GLASGOW_HASKELL__ >= 903
-{-# LANGUAGE QuantifiedConstraints #-}
+{-# LANGUAGE QuantifiedConstraints, ExplicitNamespaces, TypeOperators #-}
 #endif
 -----------------------------------------------------------------------------
 -- |
@@ -51,7 +51,7 @@ module Control.Monad.Trans.Class (
     -- $example3
   ) where
 #if MIN_VERSION_base(4,16,0)
-import GHC.Types (Total)
+import GHC.Types (type (@))
 #endif
 
 -- | The class of monad transformers.  Instances should satisfy the
@@ -63,11 +63,11 @@ import GHC.Types (Total)
 
 class MonadTrans t where
     -- | Lift a computation from the argument monad to the constructed monad.
-    lift :: (
+    lift :: (Monad m
 #if MIN_VERSION_base(4,16,0)
-            Total m, 
+            , m @ t m a
 #endif
-            Monad m) => m a -> t m a
+            ) => m a -> t m a
 
 {- $conventions
 Most monad transformer modules include the special case of applying

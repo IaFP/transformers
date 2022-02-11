@@ -1,6 +1,9 @@
 {-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__ >= 702
+#if __GLASGOW_HASKELL__ >= 702 && __GLASGOW_HASKELL__ < 903
 {-# LANGUAGE Safe #-}
+#else
+{-# LANGUAGE Trustworthy #-}
+{-# LANGUAGE QuantifiedConstraints, ExplicitNamespaces, TypeOperators #-}
 #endif
 #if __GLASGOW_HASKELL__ >= 710
 {-# LANGUAGE AutoDeriveTypeable #-}
@@ -76,6 +79,10 @@ import Data.Foldable (Foldable(foldMap))
 import Data.Monoid (mempty)
 import Data.Traversable (Traversable(traverse))
 import System.IO.Error
+
+#if MIN_VERSION_base(4,16,0)
+import GHC.Types (Total, type(@))
+#endif
 
 #if !(MIN_VERSION_base(4,9,0))
 -- These instances are in base-4.9.0
@@ -166,7 +173,11 @@ instance ErrorList Char where
 --
 -- The 'return' function yields a successful computation, while @>>=@
 -- sequences two subcomputations, failing on the first error.
-newtype ErrorT e m a = ErrorT { runErrorT :: m (Either e a) }
+newtype
+#if MIN_VERSION_base(4,16,0)
+  m @ Either e a =>
+#endif
+ ErrorT e m a = ErrorT { runErrorT :: m (Either e a) }
 
 instance (Eq e, Eq1 m) => Eq1 (ErrorT e m) where
     liftEq eq (ErrorT x) (ErrorT y) = liftEq (liftEq eq) x y
@@ -188,11 +199,27 @@ instance (Show e, Show1 m) => Show1 (ErrorT e m) where
         sp' = liftShowsPrec sp sl
         sl' = liftShowList sp sl
 
-instance (Eq e, Eq1 m, Eq a) => Eq (ErrorT e m a) where (==) = eq1
-instance (Ord e, Ord1 m, Ord a) => Ord (ErrorT e m a) where compare = compare1
-instance (Read e, Read1 m, Read a) => Read (ErrorT e m a) where
+instance (
+-- #if MIN_VERSION_base(4,16,0)
+--   m @ Either e a,
+-- #endif 
+  Eq e, Eq1 m, Eq a) => Eq (ErrorT e m a) where (==) = eq1
+instance (
+-- #if MIN_VERSION_base(4,16,0)
+--   m @ Either e a,
+-- #endif 
+  Ord e, Ord1 m, Ord a) => Ord (ErrorT e m a) where compare = compare1
+instance (
+-- #if MIN_VERSION_base(4,16,0)
+--   m @ Either e a,
+-- #endif 
+  Read e, Read1 m, Read a) => Read (ErrorT e m a) where
     readsPrec = readsPrec1
-instance (Show e, Show1 m, Show a) => Show (ErrorT e m a) where
+instance (
+-- #if MIN_VERSION_base(4,16,0)
+--   m @ Either e a,
+-- #endif 
+  Show e, Show1 m, Show a) => Show (ErrorT e m a) where
     showsPrec = showsPrec1
 
 -- | Map the unwrapped computation using the given function.
@@ -209,11 +236,19 @@ instance (Functor m) => Functor (ErrorT e m) where
 instance (Foldable f) => Foldable (ErrorT e f) where
     foldMap f (ErrorT a) = foldMap (either (const mempty) f) a
 
-instance (Traversable f) => Traversable (ErrorT e f) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total f,
+#endif
+       Traversable f) => Traversable (ErrorT e f) where
     traverse f (ErrorT a) =
         ErrorT <$> traverse (either (pure . Left) (fmap Right . f)) a
 
-instance (Functor m, Monad m) => Applicative (ErrorT e m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Functor m, Monad m) => Applicative (ErrorT e m) where
     pure a  = ErrorT $ return (Right a)
     f <*> v = ErrorT $ do
         mf <- runErrorT f
@@ -225,11 +260,19 @@ instance (Functor m, Monad m) => Applicative (ErrorT e m) where
                     Left  e -> return (Left e)
                     Right x -> return (Right (k x))
 
-instance (Functor m, Monad m, Error e) => Alternative (ErrorT e m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Functor m, Monad m, Error e) => Alternative (ErrorT e m) where
     empty = mzero
     (<|>) = mplus
 
-instance (Monad m, Error e) => Monad (ErrorT e m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Monad m, Error e) => Monad (ErrorT e m) where
 #if !(MIN_VERSION_base(4,8,0))
     return a = ErrorT $ return (Right a)
 #endif
@@ -243,11 +286,19 @@ instance (Monad m, Error e) => Monad (ErrorT e m) where
 #endif
 
 #if MIN_VERSION_base(4,9,0)
-instance (Monad m, Error e) => Fail.MonadFail (ErrorT e m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Monad m, Error e) => Fail.MonadFail (ErrorT e m) where
     fail msg = ErrorT $ return (Left (strMsg msg))
 #endif
 
-instance (Monad m, Error e) => MonadPlus (ErrorT e m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Monad m, Error e) => MonadPlus (ErrorT e m) where
     mzero       = ErrorT $ return (Left noMsg)
     m `mplus` n = ErrorT $ do
         a <- runErrorT m
@@ -255,7 +306,11 @@ instance (Monad m, Error e) => MonadPlus (ErrorT e m) where
             Left  _ -> runErrorT n
             Right r -> return (Right r)
 
-instance (MonadFix m, Error e) => MonadFix (ErrorT e m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       MonadFix m, Error e) => MonadFix (ErrorT e m) where
     mfix f = ErrorT $ mfix $ \ a -> runErrorT $ f $ case a of
         Right r -> r
         _       -> error "empty mfix argument"
@@ -265,7 +320,11 @@ instance MonadTrans (ErrorT e) where
         a <- m
         return (Right a)
 
-instance (Error e, MonadIO m) => MonadIO (ErrorT e m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Error e, MonadIO m) => MonadIO (ErrorT e m) where
     liftIO = lift . liftIO
 
 #if MIN_VERSION_base(4,12,0)
@@ -278,7 +337,11 @@ instance Contravariant m => Contravariant (ErrorT e m) where
 -- * @'runErrorT' ('throwError' e) = 'return' ('Left' e)@
 --
 -- * @'throwError' e >>= m = 'throwError' e@
-throwError :: (Monad m) => e -> ErrorT e m a
+throwError :: (
+-- #if MIN_VERSION_base(4,16,0)
+--   m @ Either e a,
+-- #endif 
+  Monad m) => e -> ErrorT e m a
 throwError l = ErrorT $ return (Left l)
 
 -- | Handle an error.
@@ -286,7 +349,11 @@ throwError l = ErrorT $ return (Left l)
 -- * @'catchError' h ('lift' m) = 'lift' m@
 --
 -- * @'catchError' h ('throwError' e) = h e@
-catchError :: (Monad m) =>
+catchError :: (
+-- #if MIN_VERSION_base(4,16,0)
+--   m @ Either e a,
+-- #endif 
+  Monad m) =>
     ErrorT e m a                -- ^ the inner computation
     -> (e -> ErrorT e m a)      -- ^ a handler for errors in the inner
                                 -- computation
@@ -304,13 +371,21 @@ liftCallCC callCC f = ErrorT $
     runErrorT (f (\ a -> ErrorT $ c (Right a)))
 
 -- | Lift a @listen@ operation to the new monad.
-liftListen :: (Monad m) => Listen w m (Either e a) -> Listen w (ErrorT e m) a
+liftListen :: (
+#if MIN_VERSION_base(4,16,0)
+                Total m,
+#endif
+   Monad m) => Listen w m (Either e a) -> Listen w (ErrorT e m) a
 liftListen listen = mapErrorT $ \ m -> do
     (a, w) <- listen m
     return $! fmap (\ r -> (r, w)) a
 
 -- | Lift a @pass@ operation to the new monad.
-liftPass :: (Monad m) => Pass w m (Either e a) -> Pass w (ErrorT e m) a
+liftPass :: (
+#if MIN_VERSION_base(4,16,0)
+                Total m,
+#endif
+   Monad m) => Pass w m (Either e a) -> Pass w (ErrorT e m) a
 liftPass pass = mapErrorT $ \ m -> pass $ do
     a <- m
     return $! case a of

@@ -1,6 +1,9 @@
 {-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__ >= 702
+#if __GLASGOW_HASKELL__ >= 702 && __GLASGOW_HASKELL__ < 903
 {-# LANGUAGE Safe #-}
+#else
+{-# LANGUAGE Trustworthy #-}
+{-# LANGUAGE QuantifiedConstraints, ExplicitNamespaces #-}
 #endif
 #if __GLASGOW_HASKELL__ >= 706
 {-# LANGUAGE PolyKinds #-}
@@ -52,36 +55,83 @@ import Control.Monad.Zip (MonadZip(mzipWith))
 import Data.Foldable
 import Data.Traversable (Traversable(traverse))
 import Prelude hiding (foldr, foldr1, foldl, foldl1, null, length)
+#if MIN_VERSION_base(4,16,0)
+import GHC.Types (Total, type (@))
+#endif
 
 -- | The trivial monad transformer, which maps a monad to an equivalent monad.
-newtype IdentityT f a = IdentityT { runIdentityT :: f a }
+newtype 
+#if MIN_VERSION_base(4,16,0)
+  f @ a =>
+#endif
+ IdentityT f a = IdentityT { runIdentityT :: f a }
 
-instance (Eq1 f) => Eq1 (IdentityT f) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total f,
+#endif
+       Eq1 f) => Eq1 (IdentityT f) where
     liftEq eq (IdentityT x) (IdentityT y) = liftEq eq x y
     {-# INLINE liftEq #-}
 
-instance (Ord1 f) => Ord1 (IdentityT f) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total f,
+#endif
+       Ord1 f) => Ord1 (IdentityT f) where
     liftCompare comp (IdentityT x) (IdentityT y) = liftCompare comp x y
     {-# INLINE liftCompare #-}
 
-instance (Read1 f) => Read1 (IdentityT f) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total f,
+#endif
+       Read1 f) => Read1 (IdentityT f) where
     liftReadsPrec rp rl = readsData $
         readsUnaryWith (liftReadsPrec rp rl) "IdentityT" IdentityT
 
-instance (Show1 f) => Show1 (IdentityT f) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total f,
+#endif
+       Show1 f) => Show1 (IdentityT f) where
     liftShowsPrec sp sl d (IdentityT m) =
         showsUnaryWith (liftShowsPrec sp sl) "IdentityT" d m
 
-instance (Eq1 f, Eq a) => Eq (IdentityT f a) where (==) = eq1
-instance (Ord1 f, Ord a) => Ord (IdentityT f a) where compare = compare1
-instance (Read1 f, Read a) => Read (IdentityT f a) where readsPrec = readsPrec1
-instance (Show1 f, Show a) => Show (IdentityT f a) where showsPrec = showsPrec1
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total f,
+#endif
+      Eq1 f, Eq a) => Eq (IdentityT f a) where (==) = eq1
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total f,
+#endif
+       Ord1 f, Ord a) => Ord (IdentityT f a) where compare = compare1
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total f,
+#endif
+       Read1 f, Read a) => Read (IdentityT f a) where readsPrec = readsPrec1
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total f,
+#endif
+       Show1 f, Show a) => Show (IdentityT f a) where showsPrec = showsPrec1
 
-instance (Functor m) => Functor (IdentityT m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Functor m) => Functor (IdentityT m) where
     fmap f = mapIdentityT (fmap f)
     {-# INLINE fmap #-}
 
-instance (Foldable f) => Foldable (IdentityT f) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total f,
+#endif
+       Foldable f) => Foldable (IdentityT f) where
     foldMap f (IdentityT t) = foldMap f t
     {-# INLINE foldMap #-}
     foldr f z (IdentityT t) = foldr f z t
@@ -97,11 +147,19 @@ instance (Foldable f) => Foldable (IdentityT f) where
     length (IdentityT t) = length t
 #endif
 
-instance (Traversable f) => Traversable (IdentityT f) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total f,
+#endif
+       Traversable f) => Traversable (IdentityT f) where
     traverse f (IdentityT a) = IdentityT <$> traverse f a
     {-# INLINE traverse #-}
 
-instance (Applicative m) => Applicative (IdentityT m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Applicative m) => Applicative (IdentityT m) where
     pure x = IdentityT (pure x)
     {-# INLINE pure #-}
     (<*>) = lift2IdentityT (<*>)
@@ -111,13 +169,21 @@ instance (Applicative m) => Applicative (IdentityT m) where
     (<*) = lift2IdentityT (<*)
     {-# INLINE (<*) #-}
 
-instance (Alternative m) => Alternative (IdentityT m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Alternative m) => Alternative (IdentityT m) where
     empty = IdentityT empty
     {-# INLINE empty #-}
     (<|>) = lift2IdentityT (<|>)
     {-# INLINE (<|>) #-}
 
-instance (Monad m) => Monad (IdentityT m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Monad m) => Monad (IdentityT m) where
 #if !(MIN_VERSION_base(4,8,0))
     return = IdentityT . return
     {-# INLINE return #-}
@@ -130,27 +196,47 @@ instance (Monad m) => Monad (IdentityT m) where
 #endif
 
 #if MIN_VERSION_base(4,9,0)
-instance (Fail.MonadFail m) => Fail.MonadFail (IdentityT m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Fail.MonadFail m) => Fail.MonadFail (IdentityT m) where
     fail msg = IdentityT $ Fail.fail msg
     {-# INLINE fail #-}
 #endif
 
-instance (MonadPlus m) => MonadPlus (IdentityT m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       MonadPlus m) => MonadPlus (IdentityT m) where
     mzero = IdentityT mzero
     {-# INLINE mzero #-}
     mplus = lift2IdentityT mplus
     {-# INLINE mplus #-}
 
-instance (MonadFix m) => MonadFix (IdentityT m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       MonadFix m) => MonadFix (IdentityT m) where
     mfix f = IdentityT (mfix (runIdentityT . f))
     {-# INLINE mfix #-}
 
-instance (MonadIO m) => MonadIO (IdentityT m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       MonadIO m) => MonadIO (IdentityT m) where
     liftIO = IdentityT . liftIO
     {-# INLINE liftIO #-}
 
 #if MIN_VERSION_base(4,4,0)
-instance (MonadZip m) => MonadZip (IdentityT m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       MonadZip m) => MonadZip (IdentityT m) where
     mzipWith f = lift2IdentityT (mzipWith f)
     {-# INLINE mzipWith #-}
 #endif
@@ -160,7 +246,11 @@ instance MonadTrans IdentityT where
     {-# INLINE lift #-}
 
 #if MIN_VERSION_base(4,12,0)
-instance Contravariant f => Contravariant (IdentityT f) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total f,
+#endif
+       Contravariant f) => Contravariant (IdentityT f) where
     contramap f = IdentityT . contramap f . runIdentityT
     {-# INLINE contramap #-}
 #endif

@@ -1,7 +1,10 @@
 {-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__ >= 702
+#if __GLASGOW_HASKELL__ >= 702 && __GLASGOW_HASKELL__ < 903
 {-# LANGUAGE Safe #-}
-#endif
+#else
+{-# LANGUAGE Trustworthy #-}
+{-# LANGUAGE QuantifiedConstraints, ExplicitNamespaces, TypeOperators #-}
+#endif 
 #if __GLASGOW_HASKELL__ >= 710
 {-# LANGUAGE AutoDeriveTypeable #-}
 #endif
@@ -74,7 +77,9 @@ import Data.Foldable
 import Data.Monoid
 import Data.Traversable (Traversable(traverse))
 import Prelude hiding (null, length)
-
+#if MIN_VERSION_base(4,16,0)
+import GHC.Types ( Total, type(@))
+#endif
 -- ---------------------------------------------------------------------------
 -- | A writer monad parameterized by the type @w@ of output to accumulate.
 --
@@ -84,7 +89,11 @@ type Writer w = WriterT w Identity
 
 -- | Construct a writer computation from a (result, output) pair.
 -- (The inverse of 'runWriter'.)
-writer :: (Monad m) => (a, w) -> WriterT w m a
+writer :: (
+#if MIN_VERSION_base(4,16,0)
+  m @ (a, w),
+#endif  
+  Monad m) => (a, w) -> WriterT w m a
 writer = WriterT . return
 {-# INLINE writer #-}
 
@@ -118,7 +127,11 @@ mapWriter f = mapWriterT (Identity . f . runIdentity)
 --
 -- The 'return' function produces the output 'mempty', while @>>=@
 -- combines the outputs of the subcomputations using 'mappend'.
-newtype WriterT w m a = WriterT { runWriterT :: m (a, w) }
+newtype 
+#if MIN_VERSION_base(4,16,0)
+  m @ (a, w) =>
+#endif
+ WriterT w m a = WriterT { runWriterT :: m (a, w) }
 
 instance (Eq w, Eq1 m) => Eq1 (WriterT w m) where
     liftEq eq (WriterT m1) (WriterT m2) = liftEq (liftEq2 eq (==)) m1 m2
@@ -143,17 +156,37 @@ instance (Show w, Show1 m) => Show1 (WriterT w m) where
         sp' = liftShowsPrec2 sp sl showsPrec showList
         sl' = liftShowList2 sp sl showsPrec showList
 
-instance (Eq w, Eq1 m, Eq a) => Eq (WriterT w m a) where (==) = eq1
-instance (Ord w, Ord1 m, Ord a) => Ord (WriterT w m a) where compare = compare1
-instance (Read w, Read1 m, Read a) => Read (WriterT w m a) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+   m @ (a, w),
+#endif  
+  Eq w, Eq1 m, Eq a) => Eq (WriterT w m a) where (==) = eq1
+instance (
+#if MIN_VERSION_base(4,16,0)
+   m @ (a, w),
+#endif  
+  Ord w, Ord1 m, Ord a) => Ord (WriterT w m a) where compare = compare1
+instance (
+#if MIN_VERSION_base(4,16,0)
+   m @ (a, w),
+#endif  
+  Read w, Read1 m, Read a) => Read (WriterT w m a) where
     readsPrec = readsPrec1
-instance (Show w, Show1 m, Show a) => Show (WriterT w m a) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+   m @ (a, w),
+#endif  
+  Show w, Show1 m, Show a) => Show (WriterT w m a) where
     showsPrec = showsPrec1
 
 -- | Extract the output from a writer computation.
 --
 -- * @'execWriterT' m = 'liftM' 'snd' ('runWriterT' m)@
-execWriterT :: (Monad m) => WriterT w m a -> m w
+execWriterT :: (
+#if MIN_VERSION_base(4,16,0)
+   m @ (a, w),
+#endif  
+  Monad m) => WriterT w m a -> m w
 execWriterT m = do
     (_, w) <- runWriterT m
     return w
@@ -179,25 +212,41 @@ instance (Foldable f) => Foldable (WriterT w f) where
     length (WriterT t) = length t
 #endif
 
-instance (Traversable f) => Traversable (WriterT w f) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total f,
+#endif
+       Traversable f) => Traversable (WriterT w f) where
     traverse f = fmap WriterT . traverse f' . runWriterT where
        f' (a, b) = fmap (\ c -> (c, b)) (f a)
     {-# INLINE traverse #-}
 
-instance (Monoid w, Applicative m) => Applicative (WriterT w m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Monoid w, Applicative m) => Applicative (WriterT w m) where
     pure a  = WriterT $ pure (a, mempty)
     {-# INLINE pure #-}
     f <*> v = WriterT $ liftA2 k (runWriterT f) (runWriterT v)
       where k (a, w) (b, w') = (a b, w `mappend` w')
     {-# INLINE (<*>) #-}
 
-instance (Monoid w, Alternative m) => Alternative (WriterT w m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Monoid w, Alternative m) => Alternative (WriterT w m) where
     empty   = WriterT empty
     {-# INLINE empty #-}
     m <|> n = WriterT $ runWriterT m <|> runWriterT n
     {-# INLINE (<|>) #-}
 
-instance (Monoid w, Monad m) => Monad (WriterT w m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Monoid w, Monad m) => Monad (WriterT w m) where
 #if !(MIN_VERSION_base(4,8,0))
     return a = writer (a, mempty)
     {-# INLINE return #-}
@@ -213,18 +262,30 @@ instance (Monoid w, Monad m) => Monad (WriterT w m) where
 #endif
 
 #if MIN_VERSION_base(4,9,0)
-instance (Monoid w, Fail.MonadFail m) => Fail.MonadFail (WriterT w m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+      Monoid w, Fail.MonadFail m) => Fail.MonadFail (WriterT w m) where
     fail msg = WriterT $ Fail.fail msg
     {-# INLINE fail #-}
 #endif
 
-instance (Monoid w, MonadPlus m) => MonadPlus (WriterT w m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+      Monoid w, MonadPlus m) => MonadPlus (WriterT w m) where
     mzero       = WriterT mzero
     {-# INLINE mzero #-}
     m `mplus` n = WriterT $ runWriterT m `mplus` runWriterT n
     {-# INLINE mplus #-}
 
-instance (Monoid w, MonadFix m) => MonadFix (WriterT w m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+      Monoid w, MonadFix m) => MonadFix (WriterT w m) where
     mfix m = WriterT $ mfix $ \ ~(a, _) -> runWriterT (m a)
     {-# INLINE mfix #-}
 
@@ -234,12 +295,20 @@ instance (Monoid w) => MonadTrans (WriterT w) where
         return (a, mempty)
     {-# INLINE lift #-}
 
-instance (Monoid w, MonadIO m) => MonadIO (WriterT w m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Monoid w, MonadIO m) => MonadIO (WriterT w m) where
     liftIO = lift . liftIO
     {-# INLINE liftIO #-}
 
 #if MIN_VERSION_base(4,4,0)
-instance (Monoid w, MonadZip m) => MonadZip (WriterT w m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+      Monoid w, MonadZip m) => MonadZip (WriterT w m) where
     mzipWith f (WriterT x) (WriterT y) = WriterT $
         mzipWith (\ (a, w) (b, w') -> (f a b, w `mappend` w')) x y
     {-# INLINE mzipWith #-}
@@ -252,7 +321,11 @@ instance Contravariant m => Contravariant (WriterT w m) where
 #endif
 
 -- | @'tell' w@ is an action that produces the output @w@.
-tell :: (Monad m) => w -> WriterT w m ()
+tell :: (
+#if MIN_VERSION_base(4,16,0)
+   m @ ((), w),
+#endif  
+    Monad m) => w -> WriterT w m ()
 tell w = writer ((), w)
 {-# INLINE tell #-}
 
@@ -260,7 +333,11 @@ tell w = writer ((), w)
 -- output to the value of the computation.
 --
 -- * @'runWriterT' ('listen' m) = 'liftM' (\\ (a, w) -> ((a, w), w)) ('runWriterT' m)@
-listen :: (Monad m) => WriterT w m a -> WriterT w m (a, w)
+listen :: (
+#if MIN_VERSION_base(4,16,0)
+   m @ (a, w), m @ ((a, w), w),
+#endif  
+  Monad m) => WriterT w m a -> WriterT w m (a, w)
 listen m = WriterT $ do
     (a, w) <- runWriterT m
     return ((a, w), w)
@@ -272,7 +349,11 @@ listen m = WriterT $ do
 -- * @'listens' f m = 'liftM' (id *** f) ('listen' m)@
 --
 -- * @'runWriterT' ('listens' f m) = 'liftM' (\\ (a, w) -> ((a, f w), w)) ('runWriterT' m)@
-listens :: (Monad m) => (w -> b) -> WriterT w m a -> WriterT w m (a, b)
+listens :: (
+#if MIN_VERSION_base(4,16,0)
+   m @ (a, w), m @ ((a, b), w),
+#endif  
+  Monad m) => (w -> b) -> WriterT w m a -> WriterT w m (a, b)
 listens f m = WriterT $ do
     (a, w) <- runWriterT m
     return ((a, f w), w)
@@ -283,7 +364,11 @@ listens f m = WriterT $ do
 -- to the output.
 --
 -- * @'runWriterT' ('pass' m) = 'liftM' (\\ ((a, f), w) -> (a, f w)) ('runWriterT' m)@
-pass :: (Monad m) => WriterT w m (a, w -> w) -> WriterT w m a
+pass :: (
+#if MIN_VERSION_base(4,16,0)
+   m @ ((a, w -> w), w), m @ (a, w),
+#endif  
+  Monad m) => WriterT w m (a, w -> w) -> WriterT w m a
 pass m = WriterT $ do
     ((a, f), w) <- runWriterT m
     return (a, f w)
@@ -296,7 +381,11 @@ pass m = WriterT $ do
 -- * @'censor' f m = 'pass' ('liftM' (\\ x -> (x,f)) m)@
 --
 -- * @'runWriterT' ('censor' f m) = 'liftM' (\\ (a, w) -> (a, f w)) ('runWriterT' m)@
-censor :: (Monad m) => (w -> w) -> WriterT w m a -> WriterT w m a
+censor :: (
+#if MIN_VERSION_base(4,16,0)
+   m @ (a, w),
+#endif  
+  Monad m) => (w -> w) -> WriterT w m a -> WriterT w m a
 censor f m = WriterT $ do
     (a, w) <- runWriterT m
     return (a, f w)

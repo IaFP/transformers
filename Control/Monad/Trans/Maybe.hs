@@ -1,6 +1,9 @@
 {-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__ >= 702
+#if __GLASGOW_HASKELL__ >= 702 && __GLASGOW_HASKELL__ < 903
 {-# LANGUAGE Safe #-}
+#else
+{-# LANGUAGE Trustworthy #-}
+{-# LANGUAGE QuantifiedConstraints, ExplicitNamespaces, TypeOperators #-}
 #endif
 #if __GLASGOW_HASKELL__ >= 710
 {-# LANGUAGE AutoDeriveTypeable #-}
@@ -61,7 +64,9 @@ import Control.Monad.Zip (MonadZip(mzipWith))
 import Data.Foldable (Foldable(foldMap))
 import Data.Maybe (fromMaybe)
 import Data.Traversable (Traversable(traverse))
-
+#if MIN_VERSION_base(4,16,0)
+import GHC.Types (Total, type(@))
+#endif
 -- | The parameterizable maybe monad, obtained by composing an arbitrary
 -- monad with the 'Maybe' monad.
 --
@@ -70,34 +75,70 @@ import Data.Traversable (Traversable(traverse))
 -- The 'return' function yields a computation that produces that
 -- value, while @>>=@ sequences two subcomputations, exiting if either
 -- computation does.
-newtype MaybeT m a = MaybeT { runMaybeT :: m (Maybe a) }
+newtype 
+#if MIN_VERSION_base(4,16,0)
+  m @ Maybe a =>
+#endif
+ MaybeT m a = MaybeT { runMaybeT :: m (Maybe a) }
 
-instance (Eq1 m) => Eq1 (MaybeT m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Eq1 m) => Eq1 (MaybeT m) where
     liftEq eq (MaybeT x) (MaybeT y) = liftEq (liftEq eq) x y
     {-# INLINE liftEq #-}
 
-instance (Ord1 m) => Ord1 (MaybeT m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Ord1 m) => Ord1 (MaybeT m) where
     liftCompare comp (MaybeT x) (MaybeT y) = liftCompare (liftCompare comp) x y
     {-# INLINE liftCompare #-}
 
-instance (Read1 m) => Read1 (MaybeT m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Read1 m) => Read1 (MaybeT m) where
     liftReadsPrec rp rl = readsData $
         readsUnaryWith (liftReadsPrec rp' rl') "MaybeT" MaybeT
       where
         rp' = liftReadsPrec rp rl
         rl' = liftReadList rp rl
 
-instance (Show1 m) => Show1 (MaybeT m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Show1 m) => Show1 (MaybeT m) where
     liftShowsPrec sp sl d (MaybeT m) =
         showsUnaryWith (liftShowsPrec sp' sl') "MaybeT" d m
       where
         sp' = liftShowsPrec sp sl
         sl' = liftShowList sp sl
 
-instance (Eq1 m, Eq a) => Eq (MaybeT m a) where (==) = eq1
-instance (Ord1 m, Ord a) => Ord (MaybeT m a) where compare = compare1
-instance (Read1 m, Read a) => Read (MaybeT m a) where readsPrec = readsPrec1
-instance (Show1 m, Show a) => Show (MaybeT m a) where showsPrec = showsPrec1
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Eq1 m, Eq a) => Eq (MaybeT m a) where (==) = eq1
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Ord1 m, Ord a) => Ord (MaybeT m a) where compare = compare1
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Read1 m, Read a) => Read (MaybeT m a) where readsPrec = readsPrec1
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Show1 m, Show a) => Show (MaybeT m a) where showsPrec = showsPrec1
 
 -- | Transform the computation inside a @MaybeT@.
 --
@@ -108,13 +149,21 @@ mapMaybeT f = MaybeT . f . runMaybeT
 
 -- | Convert a 'MaybeT' computation to 'ExceptT', with a default
 -- exception value.
-maybeToExceptT :: (Functor m) => e -> MaybeT m a -> ExceptT e m a
+maybeToExceptT :: (
+#if MIN_VERSION_base(4,16,0)
+ m @ Maybe a, m @ Either e a,
+#endif
+  Functor m) => e -> MaybeT m a -> ExceptT e m a
 maybeToExceptT e (MaybeT m) = ExceptT $ fmap (maybe (Left e) Right) m
 {-# INLINE maybeToExceptT #-}
 
 -- | Convert a 'ExceptT' computation to 'MaybeT', discarding the
 -- value of any exception.
-exceptToMaybeT :: (Functor m) => ExceptT e m a -> MaybeT m a
+exceptToMaybeT :: (
+#if MIN_VERSION_base(4,16,0)
+ m @ Maybe a, m @ Either e a,
+#endif
+  Functor m) => ExceptT e m a -> MaybeT m a
 exceptToMaybeT (ExceptT m) = MaybeT $ fmap (either (const Nothing) Just) m
 {-# INLINE exceptToMaybeT #-}
 
@@ -126,11 +175,19 @@ instance (Foldable f) => Foldable (MaybeT f) where
     foldMap f (MaybeT a) = foldMap (foldMap f) a
     {-# INLINE foldMap #-}
 
-instance (Traversable f) => Traversable (MaybeT f) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total f,
+#endif
+       Traversable f) => Traversable (MaybeT f) where
     traverse f (MaybeT a) = MaybeT <$> traverse (traverse f) a
     {-# INLINE traverse #-}
 
-instance (Functor m, Monad m) => Applicative (MaybeT m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Functor m, Monad m) => Applicative (MaybeT m) where
     pure = MaybeT . return . Just
     {-# INLINE pure #-}
     mf <*> mx = MaybeT $ do
@@ -146,7 +203,11 @@ instance (Functor m, Monad m) => Applicative (MaybeT m) where
     m *> k = m >>= \_ -> k
     {-# INLINE (*>) #-}
 
-instance (Functor m, Monad m) => Alternative (MaybeT m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Functor m, Monad m) => Alternative (MaybeT m) where
     empty = MaybeT (return Nothing)
     {-# INLINE empty #-}
     x <|> y = MaybeT $ do
@@ -156,7 +217,11 @@ instance (Functor m, Monad m) => Alternative (MaybeT m) where
             Just _  -> return v
     {-# INLINE (<|>) #-}
 
-instance (Monad m) => Monad (MaybeT m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Monad m) => Monad (MaybeT m) where
 #if !(MIN_VERSION_base(4,8,0))
     return = MaybeT . return . Just
     {-# INLINE return #-}
@@ -173,12 +238,20 @@ instance (Monad m) => Monad (MaybeT m) where
 #endif
 
 #if MIN_VERSION_base(4,9,0)
-instance (Monad m) => Fail.MonadFail (MaybeT m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Monad m) => Fail.MonadFail (MaybeT m) where
     fail _ = MaybeT (return Nothing)
     {-# INLINE fail #-}
 #endif
 
-instance (Monad m) => MonadPlus (MaybeT m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       Monad m) => MonadPlus (MaybeT m) where
     mzero = MaybeT (return Nothing)
     {-# INLINE mzero #-}
     mplus x y = MaybeT $ do
@@ -188,7 +261,11 @@ instance (Monad m) => MonadPlus (MaybeT m) where
             Just _  -> return v
     {-# INLINE mplus #-}
 
-instance (MonadFix m) => MonadFix (MaybeT m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       MonadFix m) => MonadFix (MaybeT m) where
     mfix f = MaybeT (mfix (runMaybeT . f . fromMaybe bomb))
       where bomb = error "mfix (MaybeT): inner computation returned Nothing"
     {-# INLINE mfix #-}
@@ -197,12 +274,20 @@ instance MonadTrans MaybeT where
     lift = MaybeT . liftM Just
     {-# INLINE lift #-}
 
-instance (MonadIO m) => MonadIO (MaybeT m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       MonadIO m) => MonadIO (MaybeT m) where
     liftIO = lift . liftIO
     {-# INLINE liftIO #-}
 
 #if MIN_VERSION_base(4,4,0)
-instance (MonadZip m) => MonadZip (MaybeT m) where
+instance (
+#if MIN_VERSION_base(4,16,0)
+       Total m,
+#endif
+       MonadZip m) => MonadZip (MaybeT m) where
     mzipWith f (MaybeT a) (MaybeT b) = MaybeT $ mzipWith (liftA2 f) a b
     {-# INLINE mzipWith #-}
 #endif
@@ -225,14 +310,22 @@ liftCatch f m h = MaybeT $ f (runMaybeT m) (runMaybeT . h)
 {-# INLINE liftCatch #-}
 
 -- | Lift a @listen@ operation to the new monad.
-liftListen :: (Monad m) => Listen w m (Maybe a) -> Listen w (MaybeT m) a
+liftListen :: (
+#if MIN_VERSION_base(4,16,0)
+              Total m,
+#endif
+              Monad m) => Listen w m (Maybe a) -> Listen w (MaybeT m) a
 liftListen listen = mapMaybeT $ \ m -> do
     (a, w) <- listen m
     return $! fmap (\ r -> (r, w)) a
 {-# INLINE liftListen #-}
 
 -- | Lift a @pass@ operation to the new monad.
-liftPass :: (Monad m) => Pass w m (Maybe a) -> Pass w (MaybeT m) a
+liftPass :: (
+#if MIN_VERSION_base(4,16,0)
+    Total m,
+#endif
+   Monad m) => Pass w m (Maybe a) -> Pass w (MaybeT m) a
 liftPass pass = mapMaybeT $ \ m -> pass $ do
     a <- m
     return $! case a of
