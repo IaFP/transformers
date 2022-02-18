@@ -51,7 +51,7 @@ module Control.Monad.Trans.Class (
     -- $example3
   ) where
 #if MIN_VERSION_base(4,16,0)
-import GHC.Types (type (@))
+import GHC.Types (type (@), Total)
 #endif
 
 -- | The class of monad transformers.  Instances should satisfy the
@@ -65,7 +65,7 @@ class MonadTrans t where
     -- | Lift a computation from the argument monad to the constructed monad.
     lift :: (Monad m
 #if MIN_VERSION_base(4,16,0)
-            , m @ t m a
+            , Total m
 #endif
             ) => m a -> t m a
 
@@ -74,6 +74,7 @@ Most monad transformer modules include the special case of applying
 the transformer to 'Data.Functor.Identity.Identity'.  For example,
 @'Control.Monad.Trans.State.Lazy.State' s@ is an abbreviation for
 @'Control.Monad.Trans.State.Lazy.StateT' s 'Data.Functor.Identity.Identity'@.
+
 
 Each monad transformer also comes with an operation @run@/XXX/@T@ to
 unwrap the transformer, exposing a computation of the inner monad.

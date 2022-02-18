@@ -83,9 +83,9 @@ type Reader r = ReaderT r Identity
 
 -- | Constructor for computations in the reader monad (equivalent to 'asks').
 reader :: (
-#if MIN_VERSION_base(4,16,0)
-   m @ a,
-#endif  
+-- #if MIN_VERSION_base(4,16,0)
+--    m @ a,
+-- #endif  
     Monad m) => (r -> a) -> ReaderT r m a
 reader f = ReaderT (return . f)
 {-# INLINE reader #-}
@@ -177,9 +177,9 @@ instance (Alternative m) => Alternative (ReaderT r m) where
     {-# INLINE (<|>) #-}
 
 instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
+-- #if MIN_VERSION_base(4,16,0)
+--        Total m,
+-- #endif
        Monad m) => Monad (ReaderT r m) where
 #if !(MIN_VERSION_base(4,8,0))
     return   = lift . return
@@ -262,11 +262,7 @@ liftReaderT m = ReaderT (const m)
 {-# INLINE liftReaderT #-}
 
 -- | Fetch the value of the environment.
-ask :: (
-#if MIN_VERSION_base(4,16,0)
-   m @ r,
-#endif  
-    Monad m) => ReaderT r m r
+ask :: (Monad m) => ReaderT r m r
 ask = ReaderT return
 {-# INLINE ask #-}
 
@@ -284,11 +280,7 @@ local = withReaderT
 -- | Retrieve a function of the current environment.
 --
 -- * @'asks' f = 'liftM' f 'ask'@
-asks :: (
-#if MIN_VERSION_base(4,16,0)
-   m @ a,
-#endif  
-    Monad m)
+asks :: (Monad m)
     => (r -> a)         -- ^ The selector function to apply to the environment.
     -> ReaderT r m a
 asks f = ReaderT (return . f)
