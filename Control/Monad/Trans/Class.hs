@@ -63,11 +63,11 @@ import GHC.Types (type (@), Total)
 
 class MonadTrans t where
     -- | Lift a computation from the argument monad to the constructed monad.
-    lift :: (Monad m
+    lift :: (
 #if MIN_VERSION_base(4,16,0)
-            , Total m
+            m @ t m a, 
 #endif
-            ) => m a -> t m a
+            Monad m) => m a -> t m a
 
 {- $conventions
 Most monad transformer modules include the special case of applying
