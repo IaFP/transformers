@@ -65,7 +65,7 @@ class MonadTrans t where
     -- | Lift a computation from the argument monad to the constructed monad.
     lift :: (
 #if MIN_VERSION_base(4,16,0)
-            m @ t m a, 
+            Total m,-- m @ t m a, 
 #endif
             Monad m) => m a -> t m a
 
