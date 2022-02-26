@@ -85,11 +85,7 @@ type Writer w = WriterT w Identity
 
 -- | Construct a writer computation from a (result, output) pair.
 -- (The inverse of 'runWriter'.)
-writer :: (
-#if MIN_VERSION_base(4,16,0)
-  m @ (a, w),
-#endif 
-  Monoid w, Monad m) => (a, w) -> WriterT w m a
+writer :: (Monoid w, Monad m) => (a, w) -> WriterT w m a
 writer (a, w') = WriterT $ \ w ->
     let wt = w `mappend` w' in wt `seq` return (a, wt)
 {-# INLINE writer #-}
@@ -148,11 +144,7 @@ runWriterT m = unWriterT m mempty
 -- | Extract the output from a writer computation.
 --
 -- * @'execWriterT' m = 'liftM' 'snd' ('runWriterT' m)@
-execWriterT :: (
-#if MIN_VERSION_base(4,16,0)
-  m @ (a, w),
-#endif  
-  Monad m, Monoid w) => WriterT w m a -> m w
+execWriterT :: (Monad m, Monoid w) => WriterT w m a -> m w
 execWriterT m = do
     (_, w) <- runWriterT m
     return w
@@ -262,11 +254,7 @@ instance (
     {-# INLINE liftIO #-}
 
 -- | @'tell' w@ is an action that produces the output @w@.
-tell :: (
-#if MIN_VERSION_base(4,16,0)
-  m @ ((), w),
-#endif  
-  Monoid w, Monad m) => w -> WriterT w m ()
+tell :: (Monoid w, Monad m) => w -> WriterT w m ()
 tell w = writer ((), w)
 {-# INLINE tell #-}
 
@@ -288,11 +276,7 @@ listen = listens id
 -- * @'listens' f m = 'liftM' (id *** f) ('listen' m)@
 --
 -- * @'runWriterT' ('listens' f m) = 'liftM' (\\ (a, w) -> ((a, f w), w)) ('runWriterT' m)@
-listens :: (
-#if MIN_VERSION_base(4,16,0)
-  m @ (a, w), m @ ((a, b), w),
-#endif  
-  Monoid w, Monad m) =>
+listens :: (Monoid w, Monad m) =>
     (w -> b) -> WriterT w m a -> WriterT w m (a, b)
 listens f m = WriterT $ \ w -> do
     (a, w') <- runWriterT m
@@ -305,11 +289,7 @@ listens f m = WriterT $ \ w -> do
 -- to the output.
 --
 -- * @'runWriterT' ('pass' m) = 'liftM' (\\ ((a, f), w) -> (a, f w)) ('runWriterT' m)@
-pass :: (
-#if MIN_VERSION_base(4,16,0)
-  m @ ((a, w -> w'), w), m @ (a, w'),
-#endif  
-    Monoid w, Monoid w', Monad m) =>
+pass :: (Monoid w, Monoid w', Monad m) =>
     WriterT w m (a, w -> w') -> WriterT w' m a
 pass m = WriterT $ \ w -> do
     ((a, f), w') <- runWriterT m
@@ -324,11 +304,7 @@ pass m = WriterT $ \ w -> do
 -- * @'censor' f m = 'pass' ('liftM' (\\ x -> (x,f)) m)@
 --
 -- * @'runWriterT' ('censor' f m) = 'liftM' (\\ (a, w) -> (a, f w)) ('runWriterT' m)@
-censor :: (
-#if MIN_VERSION_base(4,16,0)
-  m @ (a, w),
-#endif  
-  Monoid w, Monad m) => (w -> w) -> WriterT w m a -> WriterT w m a
+censor :: (Monoid w, Monad m) => (w -> w) -> WriterT w m a -> WriterT w m a
 censor f m = WriterT $ \ w -> do
     (a, w') <- runWriterT m
     let wt = w `mappend` f w'

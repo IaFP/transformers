@@ -100,11 +100,7 @@ type State s = StateT s Identity
 
 -- | Construct a state monad computation from a function.
 -- (The inverse of 'runState'.)
-state :: (
-#if MIN_VERSION_base(4,16,0)
-  m @ (a, s),
-#endif  
-  Monad m)
+state :: (Monad m)
       => (s -> (a, s))  -- ^pure state transformer
       -> StateT s m a   -- ^equivalent state-passing computation
 state f = StateT (return . f)
@@ -174,11 +170,7 @@ newtype
 -- and return the final value, discarding the final state.
 --
 -- * @'evalStateT' m s = 'liftM' 'fst' ('runStateT' m s)@
-evalStateT :: (
-#if MIN_VERSION_base(4,16,0)
-  m @ (a, s),
-#endif
-  Monad m) => StateT s m a -> s -> m a
+evalStateT :: (Monad m) => StateT s m a -> s -> m a
 evalStateT m s = do
     (a, _) <- runStateT m s
     return a
@@ -188,11 +180,7 @@ evalStateT m s = do
 -- and return the final state, discarding the final value.
 --
 -- * @'execStateT' m s = 'liftM' 'snd' ('runStateT' m s)@
-execStateT :: (
-#if MIN_VERSION_base(4,16,0)
-  m @ (a, s),
-#endif
-  Monad m) => StateT s m a -> s -> m s
+execStateT :: (Monad m) => StateT s m a -> s -> m s
 execStateT m s = do
     (_, s') <- runStateT m s
     return s'
@@ -312,20 +300,12 @@ instance Contravariant m => Contravariant (StateT s m) where
 #endif
 
 -- | Fetch the current value of the state within the monad.
-get :: (
-#if MIN_VERSION_base(4,16,0)
-  m @ (s, s),
-#endif  
-  Monad m) => StateT s m s
+get :: (Monad m) => StateT s m s
 get = state $ \ s -> (s, s)
 {-# INLINE get #-}
 
 -- | @'put' s@ sets the state within the monad to @s@.
-put :: (
-#if MIN_VERSION_base(4,16,0)
-  m @ ((), s),
-#endif  
-  Monad m) => s -> StateT s m ()
+put :: (Monad m) => s -> StateT s m ()
 put s = state $ \ _ -> ((), s)
 {-# INLINE put #-}
 
@@ -333,11 +313,7 @@ put s = state $ \ _ -> ((), s)
 -- applying @f@ to the current state.
 --
 -- * @'modify' f = 'get' >>= ('put' . f)@
-modify :: (
-#if MIN_VERSION_base(4,16,0)
-  m @ ((), s),
-#endif  
-  Monad m) => (s -> s) -> StateT s m ()
+modify :: (Monad m) => (s -> s) -> StateT s m ()
 modify f = state $ \ s -> ((), f s)
 {-# INLINE modify #-}
 
@@ -347,9 +323,9 @@ modify f = state $ \ s -> ((), f s)
 -- * @'modify'' f = 'get' >>= (('$!') 'put' . f)@
 modify' :: (
 #if MIN_VERSION_base(4,16,0)
-      Total m,
+  Total m,
 #endif
-      Monad m) => (s -> s) -> StateT s m ()
+  Monad m) => (s -> s) -> StateT s m ()
 modify' f = do
     s <- get
     put $! f s
@@ -359,11 +335,7 @@ modify' f = do
 -- supplied.
 --
 -- * @'gets' f = 'liftM' f 'get'@
-gets :: (
-#if MIN_VERSION_base(4,16,0)
-  m @ (a, s),
-#endif  
-  Monad m) => (s -> a) -> StateT s m a
+gets :: (Monad m) => (s -> a) -> StateT s m a
 gets f = state $ \ s -> (f s, s)
 {-# INLINE gets #-}
 

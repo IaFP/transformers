@@ -81,64 +81,32 @@ newtype
 #endif
  MaybeT m a = MaybeT { runMaybeT :: m (Maybe a) }
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Eq1 m) => Eq1 (MaybeT m) where
+instance (Eq1 m) => Eq1 (MaybeT m) where
     liftEq eq (MaybeT x) (MaybeT y) = liftEq (liftEq eq) x y
     {-# INLINE liftEq #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Ord1 m) => Ord1 (MaybeT m) where
+instance (Ord1 m) => Ord1 (MaybeT m) where
     liftCompare comp (MaybeT x) (MaybeT y) = liftCompare (liftCompare comp) x y
     {-# INLINE liftCompare #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Read1 m) => Read1 (MaybeT m) where
+instance (Read1 m) => Read1 (MaybeT m) where
     liftReadsPrec rp rl = readsData $
         readsUnaryWith (liftReadsPrec rp' rl') "MaybeT" MaybeT
       where
         rp' = liftReadsPrec rp rl
         rl' = liftReadList rp rl
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Show1 m) => Show1 (MaybeT m) where
+instance (Show1 m) => Show1 (MaybeT m) where
     liftShowsPrec sp sl d (MaybeT m) =
         showsUnaryWith (liftShowsPrec sp' sl') "MaybeT" d m
       where
         sp' = liftShowsPrec sp sl
         sl' = liftShowList sp sl
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Eq1 m, Eq a) => Eq (MaybeT m a) where (==) = eq1
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Ord1 m, Ord a) => Ord (MaybeT m a) where compare = compare1
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Read1 m, Read a) => Read (MaybeT m a) where readsPrec = readsPrec1
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Show1 m, Show a) => Show (MaybeT m a) where showsPrec = showsPrec1
+instance (Eq1 m, Eq a) => Eq (MaybeT m a) where (==) = eq1
+instance (Ord1 m, Ord a) => Ord (MaybeT m a) where compare = compare1
+instance (Read1 m, Read a) => Read (MaybeT m a) where readsPrec = readsPrec1
+instance (Show1 m, Show a) => Show (MaybeT m a) where showsPrec = showsPrec1
 
 -- | Transform the computation inside a @MaybeT@.
 --
@@ -149,21 +117,13 @@ mapMaybeT f = MaybeT . f . runMaybeT
 
 -- | Convert a 'MaybeT' computation to 'ExceptT', with a default
 -- exception value.
-maybeToExceptT :: (
-#if MIN_VERSION_base(4,16,0)
- m @ Maybe a, m @ Either e a,
-#endif
-  Functor m) => e -> MaybeT m a -> ExceptT e m a
+maybeToExceptT :: (Functor m) => e -> MaybeT m a -> ExceptT e m a
 maybeToExceptT e (MaybeT m) = ExceptT $ fmap (maybe (Left e) Right) m
 {-# INLINE maybeToExceptT #-}
 
 -- | Convert a 'ExceptT' computation to 'MaybeT', discarding the
 -- value of any exception.
-exceptToMaybeT :: (
-#if MIN_VERSION_base(4,16,0)
- m @ Maybe a, m @ Either e a,
-#endif
-  Functor m) => ExceptT e m a -> MaybeT m a
+exceptToMaybeT :: (Functor m) => ExceptT e m a -> MaybeT m a
 exceptToMaybeT (ExceptT m) = MaybeT $ fmap (either (const Nothing) Just) m
 {-# INLINE exceptToMaybeT #-}
 
@@ -177,9 +137,9 @@ instance (Foldable f) => Foldable (MaybeT f) where
 
 instance (
 #if MIN_VERSION_base(4,16,0)
-       Total f,
+  Total f,
 #endif
-       Traversable f) => Traversable (MaybeT f) where
+  Traversable f) => Traversable (MaybeT f) where
     traverse f (MaybeT a) = MaybeT <$> traverse (traverse f) a
     {-# INLINE traverse #-}
 

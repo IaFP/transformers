@@ -170,11 +170,7 @@ runRWST m r s = unRWST m r s mempty
 
 -- | Evaluate a computation with the given initial state and environment,
 -- returning the final value and output, discarding the final state.
-evalRWST :: (
-#if MIN_VERSION_base(4,16,0)
-  m @ (a, s, w),
-#endif  
-  Monad m, Monoid w)
+evalRWST :: (Monad m, Monoid w)
          => RWST r w s m a      -- ^computation to execute
          -> r                   -- ^initial environment
          -> s                   -- ^initial value
@@ -186,11 +182,7 @@ evalRWST m r s = do
 
 -- | Evaluate a computation with the given initial state and environment,
 -- returning the final state and output, discarding the final value.
-execRWST :: (
-#if MIN_VERSION_base(4,16,0)
-  m @ (a, s, w),
-#endif  
-  Monad m, Monoid w)
+execRWST :: (Monad m, Monoid w)
          => RWST r w s m a      -- ^computation to execute
          -> r                   -- ^initial environment
          -> s                   -- ^initial value
@@ -314,20 +306,12 @@ instance (
 -- Reader operations
 
 -- | Constructor for computations in the reader monad (equivalent to 'asks').
-reader :: (
-#if MIN_VERSION_base(4,16,0)
-   m @ (a, s, w),
-#endif  
-    Monad m) => (r -> a) -> RWST r w s m a
+reader :: (Monad m) => (r -> a) -> RWST r w s m a
 reader = asks
 {-# INLINE reader #-}
 
 -- | Fetch the value of the environment.
-ask :: (
-#if MIN_VERSION_base(4,16,0)
-   m @ (r, s, w),
-#endif  
-    Monad m) => RWST r w s m r
+ask :: (Monad m) => RWST r w s m r
 ask = asks id
 {-# INLINE ask #-}
 
@@ -341,11 +325,7 @@ local f m = RWST $ \ r s w -> unRWST m (f r) s w
 -- | Retrieve a function of the current environment.
 --
 -- * @'asks' f = 'liftM' f 'ask'@
-asks :: (
-#if MIN_VERSION_base(4,16,0)
-  m @ (a, s, w),
-#endif  
-  Monad m) => (r -> a) -> RWST r w s m a
+asks :: (Monad m) => (r -> a) -> RWST r w s m a
 asks f = RWST $ \ r s w -> return (f r, s, w)
 {-# INLINE asks #-}
 
@@ -353,20 +333,12 @@ asks f = RWST $ \ r s w -> return (f r, s, w)
 -- Writer operations
 
 -- | Construct a writer computation from a (result, output) pair.
-writer :: (
-#if MIN_VERSION_base(4,16,0)
-  m @ (a, s, w),
-#endif  
-  Monoid w, Monad m) => (a, w) -> RWST r w s m a
+writer :: (Monoid w, Monad m) => (a, w) -> RWST r w s m a
 writer (a, w') = RWST $ \ _ s w -> let wt = w `mappend` w' in wt `seq` return (a, s, wt)
 {-# INLINE writer #-}
 
 -- | @'tell' w@ is an action that produces the output @w@.
-tell :: (
-#if MIN_VERSION_base(4,16,0)
-   m @ ((), s, w),
-#endif  
-    Monoid w, Monad m) => w -> RWST r w s m ()
+tell :: (Monoid w, Monad m) => w -> RWST r w s m ()
 tell w' = writer ((), w')
 {-# INLINE tell #-}
 
@@ -374,11 +346,7 @@ tell w' = writer ((), w')
 -- output to the value of the computation.
 --
 -- * @'runRWST' ('listen' m) r s = 'liftM' (\\ (a, w) -> ((a, w), w)) ('runRWST' m r s)@
-listen :: (
-#if MIN_VERSION_base(4,16,0)
-  m @ (a, s, w), m @ ((a, w), s, w),
-#endif  
-  Monoid w, Monad m) => RWST r w s m a -> RWST r w s m (a, w)
+listen :: (Monoid w, Monad m) => RWST r w s m a -> RWST r w s m (a, w)
 listen = listens id
 {-# INLINE listen #-}
 
@@ -388,11 +356,7 @@ listen = listens id
 -- * @'listens' f m = 'liftM' (id *** f) ('listen' m)@
 --
 -- * @'runRWST' ('listens' f m) r s = 'liftM' (\\ (a, w) -> ((a, f w), w)) ('runRWST' m r s)@
-listens :: (
-#if MIN_VERSION_base(4,16,0)
-  m @ (a, s, w), m @ ((a, b), s, w),
-#endif  
-  Monoid w, Monad m) => (w -> b) -> RWST r w s m a -> RWST r w s m (a, b)
+listens :: (Monoid w, Monad m) => (w -> b) -> RWST r w s m a -> RWST r w s m (a, b)
 listens f m = RWST $ \ r s w -> do
     (a, s', w') <- runRWST m r s
     let wt = w `mappend` w'
@@ -404,11 +368,7 @@ listens f m = RWST $ \ r s w -> do
 -- to the output.
 --
 -- * @'runRWST' ('pass' m) r s = 'liftM' (\\ ((a, f), w) -> (a, f w)) ('runRWST' m r s)@
-pass :: (
-#if MIN_VERSION_base(4,16,0)
-  m @ ((a, w -> w'), s, w), m @ (a, s, w'),
-#endif  
-  Monoid w, Monoid w', Monad m) => RWST r w s m (a, w -> w') -> RWST r w' s m a
+pass :: (Monoid w, Monoid w', Monad m) => RWST r w s m (a, w -> w') -> RWST r w' s m a
 pass m = RWST $ \ r s w -> do
     ((a, f), s', w') <- runRWST m r s
     let wt = w `mappend` f w'
@@ -422,11 +382,7 @@ pass m = RWST $ \ r s w -> do
 -- * @'censor' f m = 'pass' ('liftM' (\\ x -> (x,f)) m)@
 --
 -- * @'runRWST' ('censor' f m) r s = 'liftM' (\\ (a, w) -> (a, f w)) ('runRWST' m r s)@
-censor :: (
-#if MIN_VERSION_base(4,16,0)
-  m @ (a, s, w),
-#endif  
-  Monoid w, Monad m) => (w -> w) -> RWST r w s m a -> RWST r w s m a
+censor :: (Monoid w, Monad m) => (w -> w) -> RWST r w s m a -> RWST r w s m a
 censor f m = RWST $ \ r s w -> do
     (a, s', w') <- runRWST m r s
     let wt = w `mappend` f w'
@@ -437,29 +393,17 @@ censor f m = RWST $ \ r s w -> do
 -- State operations
 
 -- | Construct a state monad computation from a state transformer function.
-state :: (
-#if MIN_VERSION_base(4,16,0)
-  m @ (a, s, w),
-#endif  
-  Monad m) => (s -> (a, s)) -> RWST r w s m a
+state :: (Monad m) => (s -> (a, s)) -> RWST r w s m a
 state f = RWST $ \ _ s w -> let (a, s') = f s in return (a, s', w)
 {-# INLINE state #-}
 
 -- | Fetch the current value of the state within the monad.
-get :: (
-#if MIN_VERSION_base(4,16,0)
-   m @ (s, s, w),
-#endif  
-    Monad m) =>RWST r w s m s
+get :: (Monad m) =>RWST r w s m s
 get = gets id
 {-# INLINE get #-}
 
 -- | @'put' s@ sets the state within the monad to @s@.
-put :: (
-#if MIN_VERSION_base(4,16,0)
-  m @ ((), s, w),
-#endif  
-  Monad m) =>s -> RWST r w s m ()
+put :: (Monad m) =>s -> RWST r w s m ()
 put s = RWST $ \ _ _ w -> return ((), s, w)
 {-# INLINE put #-}
 
@@ -467,11 +411,7 @@ put s = RWST $ \ _ _ w -> return ((), s, w)
 -- applying @f@ to the current state.
 --
 -- * @'modify' f = 'get' >>= ('put' . f)@
-modify :: (
-#if MIN_VERSION_base(4,16,0)
-  m @ ((), s, w),
-#endif  
-  Monad m) =>(s -> s) -> RWST r w s m ()
+modify :: (Monad m) =>(s -> s) -> RWST r w s m ()
 modify f = RWST $ \ _ s w -> return ((), f s, w)
 {-# INLINE modify #-}
 
@@ -479,11 +419,7 @@ modify f = RWST $ \ _ s w -> return ((), f s, w)
 -- supplied.
 --
 -- * @'gets' f = 'liftM' f 'get'@
-gets :: (
-#if MIN_VERSION_base(4,16,0)
-  m @ (a, s, w),
-#endif  
-  Monad m) =>(s -> a) -> RWST r w s m a
+gets :: (Monad m) =>(s -> a) -> RWST r w s m a
 gets f = RWST $ \ _ s w -> return (f s, s, w)
 {-# INLINE gets #-}
 

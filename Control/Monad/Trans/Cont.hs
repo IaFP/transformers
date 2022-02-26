@@ -173,19 +173,11 @@ withContT :: ((b -> m r) -> (a -> m r)) -> ContT r m a -> ContT r m b
 withContT f m = ContT $ runContT m . f
 {-# INLINE withContT #-}
 
-instance
-#if MIN_VERSION_base(4,16,0)
-  m @ r =>
-#endif
-  Functor (ContT r m) where
+instance Functor (ContT r m) where
     fmap f m = ContT $ \ c -> runContT m (c . f)
     {-# INLINE fmap #-}
 
-instance
-#if MIN_VERSION_base(4,16,0)
-  m @ r =>
-#endif
-  Applicative (ContT r m) where
+instance Applicative (ContT r m) where
     pure x  = ContT ($ x)
     {-# INLINE pure #-}
     f <*> v = ContT $ \ c -> runContT f $ \ g -> runContT v (c . g)
@@ -193,11 +185,7 @@ instance
     m *> k = m >>= \_ -> k
     {-# INLINE (*>) #-}
 
-instance
-#if MIN_VERSION_base(4,16,0)
-  m @ r =>
-#endif
-  Monad (ContT r m) where
+instance Monad (ContT r m) where
 #if !(MIN_VERSION_base(4,8,0))
     return x = ContT ($ x)
     {-# INLINE return #-}
@@ -206,11 +194,7 @@ instance
     {-# INLINE (>>=) #-}
 
 #if MIN_VERSION_base(4,9,0)
-instance (
-#if MIN_VERSION_base(4,16,0)
-  m @ r,
-#endif
-  Fail.MonadFail m) => Fail.MonadFail (ContT r m) where
+instance (Fail.MonadFail m) => Fail.MonadFail (ContT r m) where
     fail msg = ContT $ \ _ -> Fail.fail msg
     {-# INLINE fail #-}
 #endif

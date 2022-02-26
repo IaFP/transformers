@@ -85,7 +85,11 @@ mapSelect f = mapSelectT (Identity . f . runIdentity)
 --
 -- 'SelectT' is not a functor on the category of monads, and many operations
 -- cannot be lifted through it.
-newtype SelectT r m a = SelectT ((a -> m r) -> m a)
+newtype
+#if MIN_VERSION_base(4,16,0)
+  (m @ r, m @ a) =>
+#endif
+  SelectT r m a = SelectT ((a -> m r) -> m a)
 
 -- | Runs a @SelectT@ computation with a function for evaluating answers
 -- to select a particular answer.  (The inverse of 'select'.)
@@ -99,27 +103,19 @@ runSelectT (SelectT g) = g
 -- the category of monads.
 --
 -- * @'runSelectT' ('mapSelectT' f m) = f . 'runSelectT' m@
-mapSelectT :: 
-#if MIN_VERSION_base(4,16,0)
-  m @ r => 
-#endif
-  (m a -> m a) -> SelectT r m a -> SelectT r m a
+mapSelectT :: (m a -> m a) -> SelectT r m a -> SelectT r m a
 mapSelectT f m = SelectT $ f . runSelectT m
 {-# INLINE mapSelectT #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Functor m) => Functor (SelectT r m) where
+instance (Functor m) => Functor (SelectT r m) where
     fmap f (SelectT g) = SelectT (fmap f . g . (. f))
     {-# INLINE fmap #-}
 
 instance (
 #if MIN_VERSION_base(4,16,0)
-       Total m,
+    Total m,
 #endif
-      Functor m, Monad m) => Applicative (SelectT r m) where
+  Functor m, Monad m) => Applicative (SelectT r m) where
     pure = lift . return
     {-# INLINE pure #-}
     SelectT gf <*> SelectT gx = SelectT $ \ k -> do
@@ -188,19 +184,11 @@ instance (
     {-# INLINE liftIO #-}
 
 -- | Convert a selection computation to a continuation-passing computation.
-selectToContT :: (
-#if MIN_VERSION_base(4,16,0)
- m @ a, 
-#endif
-  Monad m) => SelectT r m a -> ContT r m a
+selectToContT :: (Monad m) => SelectT r m a -> ContT r m a
 selectToContT (SelectT g) = ContT $ \ k -> g k >>= k
 {-# INLINE selectToCont #-}
 
 -- | Deprecated name for 'selectToContT'.
 {-# DEPRECATED selectToCont "Use selectToContT instead" #-}
-selectToCont :: (
-#if MIN_VERSION_base(4,16,0)
-  m @ a, 
-#endif
-  Monad m) => SelectT r m a -> ContT r m a
+selectToCont :: (Monad m) => SelectT r m a -> ContT r m a
 selectToCont = selectToContT

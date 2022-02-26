@@ -82,11 +82,7 @@ import GHC.Types (Total, type(@))
 type Reader r = ReaderT r Identity
 
 -- | Constructor for computations in the reader monad (equivalent to 'asks').
-reader :: (
--- #if MIN_VERSION_base(4,16,0)
---    m @ a,
--- #endif  
-    Monad m) => (r -> a) -> ReaderT r m a
+reader :: (Monad m) => (r -> a) -> ReaderT r m a
 reader f = ReaderT (return . f)
 {-# INLINE reader #-}
 

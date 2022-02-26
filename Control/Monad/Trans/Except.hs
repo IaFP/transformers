@@ -154,29 +154,13 @@ instance (Show e, Show1 m) => Show1 (ExceptT e m) where
         sp' = liftShowsPrec sp sl
         sl' = liftShowList sp sl
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-  m @ Either e a,
-#endif  
-  Eq e, Eq1 m, Eq a) => Eq (ExceptT e m a)
+instance (Eq e, Eq1 m, Eq a) => Eq (ExceptT e m a)
     where (==) = eq1
-instance (
-#if MIN_VERSION_base(4,16,0)
-  m @ Either e a,
-#endif  
-  Ord e, Ord1 m, Ord a) => Ord (ExceptT e m a)
+instance (Ord e, Ord1 m, Ord a) => Ord (ExceptT e m a)
     where compare = compare1
-instance (
-#if MIN_VERSION_base(4,16,0)
-  m @ Either e a,
-#endif  
-  Read e, Read1 m, Read a) => Read (ExceptT e m a) where
+instance (Read e, Read1 m, Read a) => Read (ExceptT e m a) where
     readsPrec = readsPrec1
-instance (
-#if MIN_VERSION_base(4,16,0)
-  m @ Either e a,
-#endif  
-  Show e, Show1 m, Show a) => Show (ExceptT e m a) where
+instance (Show e, Show1 m, Show a) => Show (ExceptT e m a) where
     showsPrec = showsPrec1
 
 -- | The inverse of 'ExceptT'.
@@ -195,11 +179,7 @@ mapExceptT f m = ExceptT $ f (runExceptT m)
 
 -- | Transform any exceptions thrown by the computation using the
 -- given function.
-withExceptT :: (
-#if MIN_VERSION_base(4,16,0)
-  m @ Either e a, m @ Either e' a,
-#endif  
-  Functor m) => (e -> e') -> ExceptT e m a -> ExceptT e' m a
+withExceptT :: (Functor m) => (e -> e') -> ExceptT e m a -> ExceptT e' m a
 withExceptT f = mapExceptT $ fmap $ either (Left . f) Right
 {-# INLINE withExceptT #-}
 
@@ -340,11 +320,7 @@ instance Contravariant m => Contravariant (ExceptT e m) where
 -- * @'runExceptT' ('throwE' e) = 'return' ('Left' e)@
 --
 -- * @'throwE' e >>= m = 'throwE' e@
-throwE :: (
-#if MIN_VERSION_base(4,16,0)
-  m @ Either e a,
-#endif  
-  Monad m) => e -> ExceptT e m a
+throwE :: (Monad m) => e -> ExceptT e m a
 throwE = ExceptT . return . Left
 {-# INLINE throwE #-}
 
@@ -353,11 +329,7 @@ throwE = ExceptT . return . Left
 -- * @'catchE' ('lift' m) h = 'lift' m@
 --
 -- * @'catchE' ('throwE' e) h = h e@
-catchE :: (
-#if MIN_VERSION_base(4,16,0)
-  m @ Either e a, m @ Either e' a,
-#endif  
-  Monad m) =>
+catchE :: (Monad m) =>
     ExceptT e m a               -- ^ the inner computation
     -> (e -> ExceptT e' m a)    -- ^ a handler for exceptions in the inner
                                 -- computation
@@ -370,11 +342,7 @@ m `catchE` h = ExceptT $ do
 {-# INLINE catchE #-}
 
 -- | Lift a @callCC@ operation to the new monad.
-liftCallCC ::
-#if MIN_VERSION_base(4,16,0)
-    m @ Either e a =>
-#endif
-  CallCC m (Either e a) (Either e b) -> CallCC (ExceptT e m) a b
+liftCallCC :: CallCC m (Either e a) (Either e b) -> CallCC (ExceptT e m) a b
 liftCallCC callCC f = ExceptT $
     callCC $ \ c ->
     runExceptT (f (\ a -> ExceptT $ c (Right a)))

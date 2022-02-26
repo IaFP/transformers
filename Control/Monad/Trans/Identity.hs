@@ -66,72 +66,32 @@ newtype
 #endif
  IdentityT f a = IdentityT { runIdentityT :: f a }
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total f,
-#endif
-       Eq1 f) => Eq1 (IdentityT f) where
+instance (Eq1 f) => Eq1 (IdentityT f) where
     liftEq eq (IdentityT x) (IdentityT y) = liftEq eq x y
     {-# INLINE liftEq #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total f,
-#endif
-       Ord1 f) => Ord1 (IdentityT f) where
+instance (Ord1 f) => Ord1 (IdentityT f) where
     liftCompare comp (IdentityT x) (IdentityT y) = liftCompare comp x y
     {-# INLINE liftCompare #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total f,
-#endif
-       Read1 f) => Read1 (IdentityT f) where
+instance (Read1 f) => Read1 (IdentityT f) where
     liftReadsPrec rp rl = readsData $
         readsUnaryWith (liftReadsPrec rp rl) "IdentityT" IdentityT
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total f,
-#endif
-       Show1 f) => Show1 (IdentityT f) where
+instance (Show1 f) => Show1 (IdentityT f) where
     liftShowsPrec sp sl d (IdentityT m) =
         showsUnaryWith (liftShowsPrec sp sl) "IdentityT" d m
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total f,
-#endif
-      Eq1 f, Eq a) => Eq (IdentityT f a) where (==) = eq1
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total f,
-#endif
-       Ord1 f, Ord a) => Ord (IdentityT f a) where compare = compare1
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total f,
-#endif
-       Read1 f, Read a) => Read (IdentityT f a) where readsPrec = readsPrec1
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total f,
-#endif
-       Show1 f, Show a) => Show (IdentityT f a) where showsPrec = showsPrec1
+instance (Eq1 f, Eq a) => Eq (IdentityT f a) where (==) = eq1
+instance (Ord1 f, Ord a) => Ord (IdentityT f a) where compare = compare1
+instance (Read1 f, Read a) => Read (IdentityT f a) where readsPrec = readsPrec1
+instance (Show1 f, Show a) => Show (IdentityT f a) where showsPrec = showsPrec1
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Functor m) => Functor (IdentityT m) where
+instance (Functor m) => Functor (IdentityT m) where
     fmap f = mapIdentityT (fmap f)
     {-# INLINE fmap #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total f,
-#endif
-       Foldable f) => Foldable (IdentityT f) where
+instance (Foldable f) => Foldable (IdentityT f) where
     foldMap f (IdentityT t) = foldMap f t
     {-# INLINE foldMap #-}
     foldr f z (IdentityT t) = foldr f z t
@@ -147,11 +107,7 @@ instance (
     length (IdentityT t) = length t
 #endif
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total f,
-#endif
-       Traversable f) => Traversable (IdentityT f) where
+instance (Traversable f) => Traversable (IdentityT f) where
     traverse f (IdentityT a) = IdentityT <$> traverse f a
     {-# INLINE traverse #-}
 

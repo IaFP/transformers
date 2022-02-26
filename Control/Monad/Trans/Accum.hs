@@ -266,19 +266,11 @@ instance (
     {-# INLINE liftIO #-}
 
 -- | @'look'@ is an action that fetches all the previously accumulated output.
-look :: (
--- #if MIN_VERSION_base(4,16,0)
---   m @ (w, w),
--- #endif
-  Monoid w, Monad m) => AccumT w m w
+look :: (Monoid w, Monad m) => AccumT w m w
 look = AccumT $ \ w -> return (w, mempty)
 
 -- | @'look'@ is an action that retrieves a function of the previously accumulated output.
-looks :: (
--- #if MIN_VERSION_base(4,16,0)
---   m @ (a, w),
--- #endif
-  Monoid w, Monad m) => (w -> a) -> AccumT w m a
+looks :: (Monoid w, Monad m) => (w -> a) -> AccumT w m a
 looks f = AccumT $ \ w -> return (f w, mempty)
 
 -- | @'add' w@ is an action that produces the output @w@.
@@ -322,22 +314,14 @@ liftListen listen m = AccumT $ \ s -> do
 {-# INLINE liftListen #-}
 
 -- | Lift a @pass@ operation to the new monad.
-liftPass :: (
-#if MIN_VERSION_base(4,16,0)
-  m @ ((a, s), w -> w),
-#endif
-  Monad m) => Pass w m (a, s) -> Pass w (AccumT s m) a
+liftPass :: (Monad m) => Pass w m (a, s) -> Pass w (AccumT s m) a
 liftPass pass m = AccumT $ \ s -> pass $ do
     ~((a, f), s') <- runAccumT m s
     return ((a, s'), f)
 {-# INLINE liftPass #-}
 
 -- | Convert a read-only computation into an accumulation computation.
-readerToAccumT :: (
--- #if MIN_VERSION_base(4,16,0)
---   m @ a, m @ (a, w),
--- #endif
-  Functor m, Monoid w) => ReaderT w m a -> AccumT w m a
+readerToAccumT :: (Functor m, Monoid w) => ReaderT w m a -> AccumT w m a
 readerToAccumT (ReaderT f) = AccumT $ \ w -> fmap (\ a -> (a, mempty)) (f w)
 {-# INLINE readerToAccumT #-}
 
@@ -348,11 +332,7 @@ writerToAccumT (WriterT m) = AccumT $ const $ m
 
 -- | Convert an accumulation (append-only) computation into a fully
 -- stateful computation.
-accumToStateT :: (
--- #if MIN_VERSION_base(4,16,0)
---   m @ (a, s),
--- #endif
-  Functor m, Monoid s) => AccumT s m a -> StateT s m a
+accumToStateT :: (Functor m, Monoid s) => AccumT s m a -> StateT s m a
 accumToStateT (AccumT f) =
     StateT $ \ w -> fmap (\ ~(a, w') -> (a, w `mappend` w')) (f w)
 {-# INLINE accumToStateT #-}

@@ -87,26 +87,10 @@ instance (Show1 m) => Show1 (ListT m) where
         sp' = liftShowsPrec sp sl
         sl' = liftShowList sp sl
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-  m @ [a],
-#endif  
-  Eq1 m, Eq a) => Eq (ListT m a) where (==) = eq1
-instance (
-#if MIN_VERSION_base(4,16,0)
-  m @ [a],
-#endif  
-  Ord1 m, Ord a) => Ord (ListT m a) where compare = compare1
-instance (
-#if MIN_VERSION_base(4,16,0)
-  m @ [a],
-#endif  
-  Read1 m, Read a) => Read (ListT m a) where readsPrec = readsPrec1
-instance (
-#if MIN_VERSION_base(4,16,0)
-  m @ [a],
-#endif  
-  Show1 m, Show a) => Show (ListT m a) where showsPrec = showsPrec1
+instance (Eq1 m, Eq a) => Eq (ListT m a) where (==) = eq1
+instance (Ord1 m, Ord a) => Ord (ListT m a) where compare = compare1
+instance (Read1 m, Read a) => Read (ListT m a) where readsPrec = readsPrec1
+instance (Show1 m, Show a) => Show (ListT m a) where showsPrec = showsPrec1
 
 -- | Map between 'ListT' computations.
 --
@@ -125,9 +109,9 @@ instance (Foldable f) => Foldable (ListT f) where
 
 instance (
 #if MIN_VERSION_base(4,16,0)
-       Total f,
+    Total f,
 #endif
-       Traversable f) => Traversable (ListT f) where
+  Traversable f) => Traversable (ListT f) where
     traverse f (ListT a) = ListT <$> traverse (traverse f) a
     {-# INLINE traverse #-}
 

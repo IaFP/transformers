@@ -199,27 +199,11 @@ instance (Show e, Show1 m) => Show1 (ErrorT e m) where
         sp' = liftShowsPrec sp sl
         sl' = liftShowList sp sl
 
-instance (
--- #if MIN_VERSION_base(4,16,0)
---   m @ Either e a,
--- #endif 
-  Eq e, Eq1 m, Eq a) => Eq (ErrorT e m a) where (==) = eq1
-instance (
--- #if MIN_VERSION_base(4,16,0)
---   m @ Either e a,
--- #endif 
-  Ord e, Ord1 m, Ord a) => Ord (ErrorT e m a) where compare = compare1
-instance (
--- #if MIN_VERSION_base(4,16,0)
---   m @ Either e a,
--- #endif 
-  Read e, Read1 m, Read a) => Read (ErrorT e m a) where
+instance (Eq e, Eq1 m, Eq a) => Eq (ErrorT e m a) where (==) = eq1
+instance (Ord e, Ord1 m, Ord a) => Ord (ErrorT e m a) where compare = compare1
+instance (Read e, Read1 m, Read a) => Read (ErrorT e m a) where
     readsPrec = readsPrec1
-instance (
--- #if MIN_VERSION_base(4,16,0)
---   m @ Either e a,
--- #endif 
-  Show e, Show1 m, Show a) => Show (ErrorT e m a) where
+instance (Show e, Show1 m, Show a) => Show (ErrorT e m a) where
     showsPrec = showsPrec1
 
 -- | Map the unwrapped computation using the given function.
