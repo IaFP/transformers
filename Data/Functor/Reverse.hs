@@ -3,7 +3,7 @@
 {-# LANGUAGE Safe #-}
 #else
 {-# LANGUAGE Trustworthy #-}
-{-# LANGUAGE QuantifiedConstraints #-}
+{-# LANGUAGE QuantifiedConstraints, ExplicitNamespaces, TypeOperators #-}
 #endif
 #if __GLASGOW_HASKELL__ >= 706
 {-# LANGUAGE PolyKinds #-}
@@ -45,11 +45,15 @@ import Data.Foldable
 import Data.Traversable
 import Data.Monoid
 #if MIN_VERSION_base(4,16,0)
-import GHC.Types ( Total )
+import GHC.Types (type (@), Total )
 #endif
 -- | The same functor, but with 'Foldable' and 'Traversable' instances
 -- that process the elements in the reverse order.
-newtype Reverse f a = Reverse { getReverse :: f a }
+newtype
+#if MIN_VERSION_base(4,16,0)
+  f @ a =>
+#endif
+  Reverse f a = Reverse { getReverse :: f a }
 
 instance (
 #if MIN_VERSION_base(4,16,0)

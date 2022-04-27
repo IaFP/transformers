@@ -46,7 +46,11 @@ import GHC.Types (type (@), Total)
 
 -- | The same functor, but with an 'Applicative' instance that performs
 -- actions in the reverse order.
-newtype Backwards f a = Backwards { forwards :: f a }
+newtype
+#if MIN_VERSION_base(4,16,0)
+  f @ a =>
+#endif
+  Backwards f a = Backwards { forwards :: f a }
 
 instance (
 #if MIN_VERSION_base(4,16,0)
