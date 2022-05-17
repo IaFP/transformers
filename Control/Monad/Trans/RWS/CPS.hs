@@ -85,7 +85,7 @@ import qualified Control.Monad.Fail as Fail
 #endif
 
 #if MIN_VERSION_base(4,16,0)
-import GHC.Types ( Total, type(@) )
+import GHC.Types (type(@) )
 #endif
 
 -- | A monad containing an environment of type @r@, output of type @w@
@@ -216,11 +216,7 @@ instance (Functor m) => Functor (RWST r w s m) where
     fmap f m = RWST $ \ r s w -> (\ (a, s', w') -> (f a, s', w')) <$> unRWST m r s w
     {-# INLINE fmap #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-          Total m,
-#endif
-          Functor m, Monad m) => Applicative (RWST r w s m) where
+instance (Applicative m, Functor m, Monad m) => Applicative (RWST r w s m) where
     pure a = RWST $ \ _ s w -> return (a, s, w)
     {-# INLINE pure #-}
 
@@ -230,23 +226,15 @@ instance (
         return (f x, s'', w'')
     {-# INLINE (<*>) #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-          Total m,
-#endif
-          Functor m, MonadPlus m) => Alternative (RWST r w s m) where
+instance (Functor m, MonadPlus m) => Alternative (RWST r w s m) where
     empty = RWST $ \ _ _ _ -> mzero
     {-# INLINE empty #-}
 
     RWST m <|> RWST n = RWST $ \ r s w -> m r s w `mplus` n r s w
     {-# INLINE (<|>) #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-          Total m,
-#endif
-          Monad m) => Monad (RWST r w s m) where
-#if !(MIN_VERSION_base(4,8,0))
+instance (Monad m) => Monad (RWST r w s m) where
+#if !(MIN_VERSION_base(4,8,0)) || (MIN_VERSION_base(4,16,0))
     return a = RWST $ \ _ s w -> return (a, s, w)
     {-# INLINE return #-}
 #endif
@@ -262,30 +250,18 @@ instance (
 #endif
 
 #if MIN_VERSION_base(4,9,0)
-instance (
-#if MIN_VERSION_base(4,16,0)
-          Total m,
-#endif
-          Fail.MonadFail m) => Fail.MonadFail (RWST r w s m) where
+instance (Fail.MonadFail m) => Fail.MonadFail (RWST r w s m) where
     fail msg = RWST $ \ _ _ _ -> Fail.fail msg
     {-# INLINE fail #-}
 #endif
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-          Total m,
-#endif
-          Functor m, MonadPlus m) => MonadPlus (RWST r w s m) where
+instance (Functor m, MonadPlus m) => MonadPlus (RWST r w s m) where
     mzero = empty
     {-# INLINE mzero #-}
     mplus = (<|>)
     {-# INLINE mplus #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-      MonadFix m) => MonadFix (RWST r w s m) where
+instance (MonadFix m) => MonadFix (RWST r w s m) where
     mfix f = RWST $ \ r s w -> mfix $ \ ~(a, _, _) -> unRWST (f a) r s w
     {-# INLINE mfix #-}
 
@@ -295,11 +271,7 @@ instance MonadTrans (RWST r w s) where
         return (a, s, w)
     {-# INLINE lift #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-          Total m,
-#endif
-          MonadIO m) => MonadIO (RWST r w s m) where
+instance (Applicative m, MonadIO m) => MonadIO (RWST r w s m) where
     liftIO = lift . liftIO
     {-# INLINE liftIO #-}
 -- ---------------------------------------------------------------------------

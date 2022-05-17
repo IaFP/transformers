@@ -111,11 +111,7 @@ instance (Traversable f) => Traversable (IdentityT f) where
     traverse f (IdentityT a) = IdentityT <$> traverse f a
     {-# INLINE traverse #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Applicative m) => Applicative (IdentityT m) where
+instance Applicative m => Applicative (IdentityT m) where
     pure x = IdentityT (pure x)
     {-# INLINE pure #-}
     (<*>) = lift2IdentityT (<*>)
@@ -125,22 +121,14 @@ instance (
     (<*) = lift2IdentityT (<*)
     {-# INLINE (<*) #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Alternative m) => Alternative (IdentityT m) where
+instance Alternative m => Alternative (IdentityT m) where
     empty = IdentityT empty
     {-# INLINE empty #-}
     (<|>) = lift2IdentityT (<|>)
     {-# INLINE (<|>) #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Monad m) => Monad (IdentityT m) where
-#if !(MIN_VERSION_base(4,8,0))
+instance (Monad m) => Monad (IdentityT m) where
+#if !(MIN_VERSION_base(4,8,0)) || (MIN_VERSION_base(4,16,0))
     return = IdentityT . return
     {-# INLINE return #-}
 #endif
@@ -152,47 +140,27 @@ instance (
 #endif
 
 #if MIN_VERSION_base(4,9,0)
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Fail.MonadFail m) => Fail.MonadFail (IdentityT m) where
+instance (Fail.MonadFail m) => Fail.MonadFail (IdentityT m) where
     fail msg = IdentityT $ Fail.fail msg
     {-# INLINE fail #-}
 #endif
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       MonadPlus m) => MonadPlus (IdentityT m) where
+instance (MonadPlus m) => MonadPlus (IdentityT m) where
     mzero = IdentityT mzero
     {-# INLINE mzero #-}
     mplus = lift2IdentityT mplus
     {-# INLINE mplus #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       MonadFix m) => MonadFix (IdentityT m) where
+instance (MonadFix m) => MonadFix (IdentityT m) where
     mfix f = IdentityT (mfix (runIdentityT . f))
     {-# INLINE mfix #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       MonadIO m) => MonadIO (IdentityT m) where
+instance (MonadIO m) => MonadIO (IdentityT m) where
     liftIO = IdentityT . liftIO
     {-# INLINE liftIO #-}
 
 #if MIN_VERSION_base(4,4,0)
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       MonadZip m) => MonadZip (IdentityT m) where
+instance (MonadZip m) => MonadZip (IdentityT m) where
     mzipWith f = lift2IdentityT (mzipWith f)
     {-# INLINE mzipWith #-}
 #endif
@@ -202,11 +170,7 @@ instance MonadTrans IdentityT where
     {-# INLINE lift #-}
 
 #if MIN_VERSION_base(4,12,0)
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total f,
-#endif
-       Contravariant f) => Contravariant (IdentityT f) where
+instance (Contravariant f) => Contravariant (IdentityT f) where
     contramap f = IdentityT . contramap f . runIdentityT
     {-# INLINE contramap #-}
 #endif

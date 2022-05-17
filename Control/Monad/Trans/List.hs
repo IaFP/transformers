@@ -99,11 +99,11 @@ mapListT :: (m [a] -> n [b]) -> ListT m a -> ListT n b
 mapListT f m = ListT $ f (runListT m)
 {-# INLINE mapListT #-}
 
-instance (Functor m) => Functor (ListT m) where
+instance Functor m => Functor (ListT m) where
     fmap f = mapListT $ fmap $ map f
     {-# INLINE fmap #-}
 
-instance (Foldable f) => Foldable (ListT f) where
+instance Foldable f => Foldable (ListT f) where
     foldMap f (ListT a) = foldMap (foldMap f) a
     {-# INLINE foldMap #-}
 
@@ -115,32 +115,20 @@ instance (
     traverse f (ListT a) = ListT <$> traverse (traverse f) a
     {-# INLINE traverse #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Applicative m) => Applicative (ListT m) where
+instance Applicative m => Applicative (ListT m) where
     pure a  = ListT $ pure [a]
     {-# INLINE pure #-}
     f <*> v = ListT $ (<*>) <$> runListT f <*> runListT v
     {-# INLINE (<*>) #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Applicative m) => Alternative (ListT m) where
+instance Applicative m => Alternative (ListT m) where
     empty   = ListT $ pure []
     {-# INLINE empty #-}
     m <|> n = ListT $ (++) <$> runListT m <*> runListT n
     {-# INLINE (<|>) #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Monad m) => Monad (ListT m) where
-#if !(MIN_VERSION_base(4,8,0))
+instance (Applicative m, Monad m) => Monad (ListT m) where
+#if !(MIN_VERSION_base(4,8,0)) || MIN_VERSION_base(4,16,0)
     return a = ListT $ return [a]
     {-# INLINE return #-}
 #endif
@@ -155,20 +143,12 @@ instance (
 #endif
 
 #if MIN_VERSION_base(4,9,0)
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Monad m) => Fail.MonadFail (ListT m) where
+instance (Applicative m, Monad m) => Fail.MonadFail (ListT m) where
     fail _ = ListT $ return []
     {-# INLINE fail #-}
 #endif
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Monad m) => MonadPlus (ListT m) where
+instance (Applicative m, Monad m) => MonadPlus (ListT m) where
     mzero       = ListT $ return []
     {-# INLINE mzero #-}
     m `mplus` n = ListT $ do
@@ -177,11 +157,7 @@ instance (
         return (a ++ b)
     {-# INLINE mplus #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       MonadFix m) => MonadFix (ListT m) where
+instance (Applicative m, MonadFix m) => MonadFix (ListT m) where
     mfix f = ListT $ mfix (runListT . f . head) >>= \ xs -> case xs of
         [] -> return []
         x:_ -> liftM (x:) (runListT (mfix (mapListT (liftM tail) . f)))
@@ -193,20 +169,12 @@ instance MonadTrans ListT where
         return [a]
     {-# INLINE lift #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       MonadIO m) => MonadIO (ListT m) where
+instance (Applicative m, MonadIO m) => MonadIO (ListT m) where
     liftIO = lift . liftIO
     {-# INLINE liftIO #-}
 
 #if MIN_VERSION_base(4,4,0)
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       MonadZip m) => MonadZip (ListT m) where
+instance (Applicative m, MonadZip m) => MonadZip (ListT m) where
     mzipWith f (ListT a) (ListT b) = ListT $ mzipWith (zipWith f) a b
     {-# INLINE mzipWith #-}
 #endif

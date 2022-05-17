@@ -142,7 +142,7 @@ withReaderT
 withReaderT f m = ReaderT $ runReaderT m . f
 {-# INLINE withReaderT #-}
 
-instance (Functor m) => Functor (ReaderT r m) where
+instance Functor m => Functor (ReaderT r m) where
     fmap f  = mapReaderT (fmap f)
     {-# INLINE fmap #-}
 #if MIN_VERSION_base(4,2,0)
@@ -150,7 +150,7 @@ instance (Functor m) => Functor (ReaderT r m) where
     {-# INLINE (<$) #-}
 #endif
 
-instance (Applicative m) => Applicative (ReaderT r m) where
+instance Applicative m => Applicative (ReaderT r m) where
     pure    = liftReaderT . pure
     {-# INLINE pure #-}
     f <*> v = ReaderT $ \ r -> runReaderT f r <*> runReaderT v r
@@ -166,26 +166,22 @@ instance (Applicative m) => Applicative (ReaderT r m) where
     {-# INLINE liftA2 #-}
 #endif
 
-instance (Alternative m) => Alternative (ReaderT r m) where
+instance Alternative m => Alternative (ReaderT r m) where
     empty   = liftReaderT empty
     {-# INLINE empty #-}
     m <|> n = ReaderT $ \ r -> runReaderT m r <|> runReaderT n r
     {-# INLINE (<|>) #-}
 
-instance (
--- #if MIN_VERSION_base(4,16,0)
---        Total m,
--- #endif
-       Monad m) => Monad (ReaderT r m) where
-#if !(MIN_VERSION_base(4,8,0))
-    return   = lift . return
+instance Monad m => Monad (ReaderT r m) where
+#if !(MIN_VERSION_base(4,8,0)) || (MIN_VERSION_base(4,16,0))
+    return   = liftReaderT . return
     {-# INLINE return #-}
 #endif
     m >>= k  = ReaderT $ \ r -> do
         a <- runReaderT m r
         runReaderT (k a) r
     {-# INLINE (>>=) #-}
-#if MIN_VERSION_base(4,8,0)
+#if MIN_VERSION_base(4,8,0) && !MIN_VERSION_base(4,16,0)
     (>>) = (*>)
 #else
     m >> k = ReaderT $ \ r -> runReaderT m r >> runReaderT k r
@@ -197,30 +193,18 @@ instance (
 #endif
 
 #if MIN_VERSION_base(4,9,0)
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Fail.MonadFail m) => Fail.MonadFail (ReaderT r m) where
+instance (Applicative m, Fail.MonadFail m) => Fail.MonadFail (ReaderT r m) where
     fail msg = lift (Fail.fail msg)
     {-# INLINE fail #-}
 #endif
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       MonadPlus m) => MonadPlus (ReaderT r m) where
+instance MonadPlus m => MonadPlus (ReaderT r m) where
     mzero       = lift mzero
     {-# INLINE mzero #-}
     m `mplus` n = ReaderT $ \ r -> runReaderT m r `mplus` runReaderT n r
     {-# INLINE mplus #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       MonadFix m) => MonadFix (ReaderT r m) where
+instance MonadFix m => MonadFix (ReaderT r m) where
     mfix f = ReaderT $ \ r -> mfix $ \ a -> runReaderT (f a) r
     {-# INLINE mfix #-}
 
@@ -237,11 +221,7 @@ instance (
     {-# INLINE liftIO #-}
 
 #if MIN_VERSION_base(4,4,0)
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       MonadZip m) => MonadZip (ReaderT r m) where
+instance (MonadZip m) => MonadZip (ReaderT r m) where
     mzipWith f (ReaderT m) (ReaderT n) = ReaderT $ \ a ->
         mzipWith f (m a) (n a)
     {-# INLINE mzipWith #-}

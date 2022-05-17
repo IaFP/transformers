@@ -111,12 +111,8 @@ instance (Functor m) => Functor (SelectT r m) where
     fmap f (SelectT g) = SelectT (fmap f . g . (. f))
     {-# INLINE fmap #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-    Total m,
-#endif
-  Functor m, Monad m) => Applicative (SelectT r m) where
-    pure = lift . return
+instance (Applicative m, Monad m) => Applicative (SelectT r m) where
+    pure = SelectT . const . return
     {-# INLINE pure #-}
     SelectT gf <*> SelectT gx = SelectT $ \ k -> do
         let h f = liftM f (gx (k . f))
@@ -126,23 +122,15 @@ instance (
     m *> k = m >>= \_ -> k
     {-# INLINE (*>) #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-      Functor m, MonadPlus m) => Alternative (SelectT r m) where
+instance (MonadPlus m) => Alternative (SelectT r m) where
     empty = mzero
     {-# INLINE empty #-}
     (<|>) = mplus
     {-# INLINE (<|>) #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-      Monad m) => Monad (SelectT r m) where
-#if !(MIN_VERSION_base(4,8,0))
-    return = lift . return
+instance (Monad m) => Monad (SelectT r m) where
+#if !(MIN_VERSION_base(4,8,0)) || (MIN_VERSION_base(4,16,0))
+    return = SelectT . const . return
     {-# INLINE return #-}
 #endif
     SelectT g >>= f = SelectT $ \ k -> do
@@ -152,20 +140,12 @@ instance (
     {-# INLINE (>>=) #-}
 
 #if MIN_VERSION_base(4,9,0)
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-      Fail.MonadFail m) => Fail.MonadFail (SelectT r m) where
-    fail msg = lift (Fail.fail msg)
+instance (Fail.MonadFail m) => Fail.MonadFail (SelectT r m) where
+    fail = SelectT . const . Fail.fail
     {-# INLINE fail #-}
 #endif
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-      MonadPlus m) => MonadPlus (SelectT r m) where
+instance (MonadPlus m) => MonadPlus (SelectT r m) where
     mzero = SelectT (const mzero)
     {-# INLINE mzero #-}
     SelectT f `mplus` SelectT g = SelectT $ \ k -> f k `mplus` g k

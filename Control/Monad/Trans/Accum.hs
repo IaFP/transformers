@@ -181,11 +181,7 @@ instance (Functor m) => Functor (AccumT w m) where
     fmap f = mapAccumT $ fmap $ \ ~(a, w) -> (f a, w)
     {-# INLINE fmap #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Monoid w, Functor m, Monad m) => Applicative (AccumT w m) where
+instance (Monoid w, Applicative m, Monad m) => Applicative (AccumT w m) where
     pure a  = AccumT $ const $ return (a, mempty)
     {-# INLINE pure #-}
     mf <*> mv = AccumT $ \ w -> do
@@ -194,22 +190,14 @@ instance (
       return (f v, w' `mappend` w'')
     {-# INLINE (<*>) #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Monoid w, Functor m, MonadPlus m) => Alternative (AccumT w m) where
+instance (Monoid w, Alternative m, MonadPlus m) => Alternative (AccumT w m) where
     empty   = AccumT $ const mzero
     {-# INLINE empty #-}
     m <|> n = AccumT $ \ w -> runAccumT m w `mplus` runAccumT n w
     {-# INLINE (<|>) #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Monoid w, Functor m, Monad m) => Monad (AccumT w m) where
-#if !(MIN_VERSION_base(4,8,0))
+instance (Monoid w, Functor m, Monad m) => Monad (AccumT w m) where
+#if !(MIN_VERSION_base(4,8,0)) || (MIN_VERSION_base(4,16,0))
     return a  = AccumT $ const $ return (a, mempty)
     {-# INLINE return #-}
 #endif
@@ -224,30 +212,18 @@ instance (
 #endif
 
 #if MIN_VERSION_base(4,9,0)
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Monoid w, Fail.MonadFail m) => Fail.MonadFail (AccumT w m) where
+instance (Monoid w, Fail.MonadFail m) => Fail.MonadFail (AccumT w m) where
     fail msg = AccumT $ const (Fail.fail msg)
     {-# INLINE fail #-}
 #endif
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Monoid w, Functor m, MonadPlus m) => MonadPlus (AccumT w m) where
+instance (Monoid w, MonadPlus m) => MonadPlus (AccumT w m) where
     mzero       = AccumT $ const mzero
     {-# INLINE mzero #-}
     m `mplus` n = AccumT $ \ w -> runAccumT m w `mplus` runAccumT n w
     {-# INLINE mplus #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Monoid w, Functor m, MonadFix m) => MonadFix (AccumT w m) where
+instance (Monoid w, Functor m, MonadFix m) => MonadFix (AccumT w m) where
     mfix m = AccumT $ \ w -> mfix $ \ ~(a, _) -> runAccumT (m a) w
     {-# INLINE mfix #-}
 

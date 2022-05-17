@@ -228,11 +228,7 @@ instance (
     traverse f (ErrorT a) =
         ErrorT <$> traverse (either (pure . Left) (fmap Right . f)) a
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Functor m, Monad m) => Applicative (ErrorT e m) where
+instance (Applicative m, Monad m) => Applicative (ErrorT e m) where
     pure a  = ErrorT $ return (Right a)
     f <*> v = ErrorT $ do
         mf <- runErrorT f
@@ -244,20 +240,12 @@ instance (
                     Left  e -> return (Left e)
                     Right x -> return (Right (k x))
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Functor m, Monad m, Error e) => Alternative (ErrorT e m) where
+instance (Applicative m, Monad m, Error e) => Alternative (ErrorT e m) where
     empty = mzero
     (<|>) = mplus
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Monad m, Error e) => Monad (ErrorT e m) where
-#if !(MIN_VERSION_base(4,8,0))
+instance (Monad m, Error e) => Monad (ErrorT e m) where
+#if !(MIN_VERSION_base(4,8,0)) || (MIN_VERSION_base(4,16,0))
     return a = ErrorT $ return (Right a)
 #endif
     m >>= k  = ErrorT $ do
@@ -270,19 +258,11 @@ instance (
 #endif
 
 #if MIN_VERSION_base(4,9,0)
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Monad m, Error e) => Fail.MonadFail (ErrorT e m) where
+instance (Monad m, Error e) => Fail.MonadFail (ErrorT e m) where
     fail msg = ErrorT $ return (Left (strMsg msg))
 #endif
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Monad m, Error e) => MonadPlus (ErrorT e m) where
+instance (Applicative m, Monad m, Error e) => MonadPlus (ErrorT e m) where
     mzero       = ErrorT $ return (Left noMsg)
     m `mplus` n = ErrorT $ do
         a <- runErrorT m
@@ -290,11 +270,7 @@ instance (
             Left  _ -> runErrorT n
             Right r -> return (Right r)
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       MonadFix m, Error e) => MonadFix (ErrorT e m) where
+instance (MonadFix m, Error e) => MonadFix (ErrorT e m) where
     mfix f = ErrorT $ mfix $ \ a -> runErrorT $ f $ case a of
         Right r -> r
         _       -> error "empty mfix argument"
@@ -321,11 +297,7 @@ instance Contravariant m => Contravariant (ErrorT e m) where
 -- * @'runErrorT' ('throwError' e) = 'return' ('Left' e)@
 --
 -- * @'throwError' e >>= m = 'throwError' e@
-throwError :: (
--- #if MIN_VERSION_base(4,16,0)
---   m @ Either e a,
--- #endif 
-  Monad m) => e -> ErrorT e m a
+throwError :: Monad m => e -> ErrorT e m a
 throwError l = ErrorT $ return (Left l)
 
 -- | Handle an error.
@@ -333,11 +305,7 @@ throwError l = ErrorT $ return (Left l)
 -- * @'catchError' h ('lift' m) = 'lift' m@
 --
 -- * @'catchError' h ('throwError' e) = h e@
-catchError :: (
--- #if MIN_VERSION_base(4,16,0)
---   m @ Either e a,
--- #endif 
-  Monad m) =>
+catchError :: Monad m =>
     ErrorT e m a                -- ^ the inner computation
     -> (e -> ErrorT e m a)      -- ^ a handler for errors in the inner
                                 -- computation
@@ -355,21 +323,13 @@ liftCallCC callCC f = ErrorT $
     runErrorT (f (\ a -> ErrorT $ c (Right a)))
 
 -- | Lift a @listen@ operation to the new monad.
-liftListen :: (
-#if MIN_VERSION_base(4,16,0)
-                Total m,
-#endif
-   Monad m) => Listen w m (Either e a) -> Listen w (ErrorT e m) a
+liftListen :: Monad m => Listen w m (Either e a) -> Listen w (ErrorT e m) a
 liftListen listen = mapErrorT $ \ m -> do
     (a, w) <- listen m
     return $! fmap (\ r -> (r, w)) a
 
 -- | Lift a @pass@ operation to the new monad.
-liftPass :: (
-#if MIN_VERSION_base(4,16,0)
-                Total m,
-#endif
-   Monad m) => Pass w m (Either e a) -> Pass w (ErrorT e m) a
+liftPass :: Monad m => Pass w m (Either e a) -> Pass w (ErrorT e m) a
 liftPass pass = mapErrorT $ \ m -> pass $ do
     a <- m
     return $! case a of

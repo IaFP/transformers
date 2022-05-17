@@ -143,11 +143,7 @@ instance (
     traverse f (MaybeT a) = MaybeT <$> traverse (traverse f) a
     {-# INLINE traverse #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Functor m, Monad m) => Applicative (MaybeT m) where
+instance (Applicative m, Monad m) => Applicative (MaybeT m) where
     pure = MaybeT . return . Just
     {-# INLINE pure #-}
     mf <*> mx = MaybeT $ do
@@ -163,11 +159,7 @@ instance (
     m *> k = m >>= \_ -> k
     {-# INLINE (*>) #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Functor m, Monad m) => Alternative (MaybeT m) where
+instance (Applicative m, Monad m) => Alternative (MaybeT m) where
     empty = MaybeT (return Nothing)
     {-# INLINE empty #-}
     x <|> y = MaybeT $ do
@@ -177,12 +169,8 @@ instance (
             Just _  -> return v
     {-# INLINE (<|>) #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Monad m) => Monad (MaybeT m) where
-#if !(MIN_VERSION_base(4,8,0))
+instance (Monad m) => Monad (MaybeT m) where
+#if !(MIN_VERSION_base(4,8,0)) || (MIN_VERSION_base(4,16,0))
     return = MaybeT . return . Just
     {-# INLINE return #-}
 #endif
@@ -198,20 +186,12 @@ instance (
 #endif
 
 #if MIN_VERSION_base(4,9,0)
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Monad m) => Fail.MonadFail (MaybeT m) where
+instance (Applicative m, Monad m) => Fail.MonadFail (MaybeT m) where
     fail _ = MaybeT (return Nothing)
     {-# INLINE fail #-}
 #endif
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Monad m) => MonadPlus (MaybeT m) where
+instance (Applicative m, Monad m) => MonadPlus (MaybeT m) where
     mzero = MaybeT (return Nothing)
     {-# INLINE mzero #-}
     mplus x y = MaybeT $ do
@@ -221,11 +201,7 @@ instance (
             Just _  -> return v
     {-# INLINE mplus #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       MonadFix m) => MonadFix (MaybeT m) where
+instance (Applicative m, MonadFix m) => MonadFix (MaybeT m) where
     mfix f = MaybeT (mfix (runMaybeT . f . fromMaybe bomb))
       where bomb = error "mfix (MaybeT): inner computation returned Nothing"
     {-# INLINE mfix #-}
@@ -234,20 +210,12 @@ instance MonadTrans MaybeT where
     lift = MaybeT . liftM Just
     {-# INLINE lift #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       MonadIO m) => MonadIO (MaybeT m) where
+instance (Applicative m, MonadIO m) => MonadIO (MaybeT m) where
     liftIO = lift . liftIO
     {-# INLINE liftIO #-}
 
 #if MIN_VERSION_base(4,4,0)
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       MonadZip m) => MonadZip (MaybeT m) where
+instance (Applicative m, MonadZip m) => MonadZip (MaybeT m) where
     mzipWith f (MaybeT a) (MaybeT b) = MaybeT $ mzipWith (liftA2 f) a b
     {-# INLINE mzipWith #-}
 #endif
@@ -270,22 +238,14 @@ liftCatch f m h = MaybeT $ f (runMaybeT m) (runMaybeT . h)
 {-# INLINE liftCatch #-}
 
 -- | Lift a @listen@ operation to the new monad.
-liftListen :: (
-#if MIN_VERSION_base(4,16,0)
-              Total m,
-#endif
-              Monad m) => Listen w m (Maybe a) -> Listen w (MaybeT m) a
+liftListen :: Monad m => Listen w m (Maybe a) -> Listen w (MaybeT m) a
 liftListen listen = mapMaybeT $ \ m -> do
     (a, w) <- listen m
     return $! fmap (\ r -> (r, w)) a
 {-# INLINE liftListen #-}
 
 -- | Lift a @pass@ operation to the new monad.
-liftPass :: (
-#if MIN_VERSION_base(4,16,0)
-    Total m,
-#endif
-   Monad m) => Pass w m (Maybe a) -> Pass w (MaybeT m) a
+liftPass :: Monad m => Pass w m (Maybe a) -> Pass w (MaybeT m) a
 liftPass pass = mapMaybeT $ \ m -> pass $ do
     a <- m
     return $! case a of

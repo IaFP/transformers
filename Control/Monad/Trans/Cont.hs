@@ -186,7 +186,7 @@ instance Applicative (ContT r m) where
     {-# INLINE (*>) #-}
 
 instance Monad (ContT r m) where
-#if !(MIN_VERSION_base(4,8,0))
+#if !(MIN_VERSION_base(4,8,0)) || MIN_VERSION_base(4,16,0)
     return x = ContT ($ x)
     {-# INLINE return #-}
 #endif

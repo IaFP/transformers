@@ -200,11 +200,7 @@ instance (
         ExceptT <$> traverse (either (pure . Left) (fmap Right . f)) a
     {-# INLINE traverse #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-      Functor m, Monad m) => Applicative (ExceptT e m) where
+instance (Applicative m, Monad m) => Applicative (ExceptT e m) where
     pure a = ExceptT $ return (Right a)
     {-# INLINE pure #-}
     ExceptT f <*> ExceptT v = ExceptT $ do
@@ -220,11 +216,7 @@ instance (
     m *> k = m >>= \_ -> k
     {-# INLINE (*>) #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-      Functor m, Monad m, Monoid e) => Alternative (ExceptT e m) where
+instance (Alternative m, Monad m, Monoid e) => Alternative (ExceptT e m) where
     empty = ExceptT $ return (Left mempty)
     {-# INLINE empty #-}
     ExceptT mx <|> ExceptT my = ExceptT $ do
@@ -234,12 +226,8 @@ instance (
             Right x -> return (Right x)
     {-# INLINEABLE (<|>) #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-     Total m,
-#endif
-      Monad m) => Monad (ExceptT e m) where
-#if !(MIN_VERSION_base(4,8,0))
+instance (Monad m) => Monad (ExceptT e m) where
+#if !(MIN_VERSION_base(4,8,0)) || (MIN_VERSION_base(4,16,0))
     return a = ExceptT $ return (Right a)
     {-# INLINE return #-}
 #endif
@@ -255,20 +243,12 @@ instance (
 #endif
 
 #if MIN_VERSION_base(4,9,0)
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-      Fail.MonadFail m) => Fail.MonadFail (ExceptT e m) where
+instance Fail.MonadFail m => Fail.MonadFail (ExceptT e m) where
     fail = ExceptT . Fail.fail
     {-# INLINE fail #-}
 #endif
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-      Monad m, Monoid e) => MonadPlus (ExceptT e m) where
+instance (Alternative m, Monad m, Monoid e) => MonadPlus (ExceptT e m) where
     mzero = ExceptT $ return (Left mempty)
     {-# INLINE mzero #-}
     ExceptT mx `mplus` ExceptT my = ExceptT $ do
@@ -278,11 +258,7 @@ instance (
             Right x -> return (Right x)
     {-# INLINEABLE mplus #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-      MonadFix m) => MonadFix (ExceptT e m) where
+instance MonadFix m => MonadFix (ExceptT e m) where
     mfix f = ExceptT (mfix (runExceptT . f . either (const bomb) id))
       where bomb = error "mfix (ExceptT): inner computation returned Left value"
     {-# INLINE mfix #-}
@@ -300,11 +276,7 @@ instance (
     {-# INLINE liftIO #-}
 
 #if MIN_VERSION_base(4,4,0)
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-      MonadZip m) => MonadZip (ExceptT e m) where
+instance (MonadZip m) => MonadZip (ExceptT e m) where
     mzipWith f (ExceptT a) (ExceptT b) = ExceptT $ mzipWith (liftA2 f) a b
     {-# INLINE mzipWith #-}
 #endif
@@ -349,22 +321,14 @@ liftCallCC callCC f = ExceptT $
 {-# INLINE liftCallCC #-}
 
 -- | Lift a @listen@ operation to the new monad.
-liftListen :: (
-#if MIN_VERSION_base(4,16,0)
-                Total m,
-#endif
-               Monad m) => Listen w m (Either e a) -> Listen w (ExceptT e m) a
+liftListen :: Monad m => Listen w m (Either e a) -> Listen w (ExceptT e m) a
 liftListen listen = mapExceptT $ \ m -> do
     (a, w) <- listen m
     return $! fmap (\ r -> (r, w)) a
 {-# INLINE liftListen #-}
 
 -- | Lift a @pass@ operation to the new monad.
-liftPass :: (
-#if MIN_VERSION_base(4,16,0)
-           Total m,
-#endif
-           Monad m) => Pass w m (Either e a) -> Pass w (ExceptT e m) a
+liftPass :: Monad m => Pass w m (Either e a) -> Pass w (ExceptT e m) a
 liftPass pass = mapExceptT $ \ m -> pass $ do
     a <- m
     return $! case a of
