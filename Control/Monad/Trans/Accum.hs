@@ -74,7 +74,7 @@ import Control.Monad.Signatures
 import Data.Monoid
 #endif
 #if MIN_VERSION_base(4,16,0)
-import GHC.Types (type(@), Total )
+import GHC.Types (type(@))
 #endif
 
 -- ---------------------------------------------------------------------------
@@ -233,11 +233,7 @@ instance (Monoid w) => MonadTrans (AccumT w) where
         return (a, mempty)
     {-# INLINE lift #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Monoid w, Functor m, MonadIO m) => MonadIO (AccumT w m) where
+instance (Monoid w, Functor m, MonadIO m) => MonadIO (AccumT w m) where
     liftIO = lift . liftIO
     {-# INLINE liftIO #-}
 

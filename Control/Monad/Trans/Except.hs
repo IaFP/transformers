@@ -267,11 +267,7 @@ instance MonadTrans (ExceptT e) where
     lift = ExceptT . liftM Right
     {-# INLINE lift #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-      MonadIO m) => MonadIO (ExceptT e m) where
+instance (MonadIO m) => MonadIO (ExceptT e m) where
     liftIO = lift . liftIO
     {-# INLINE liftIO #-}
 

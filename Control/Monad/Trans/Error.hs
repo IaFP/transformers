@@ -280,11 +280,7 @@ instance MonadTrans (ErrorT e) where
         a <- m
         return (Right a)
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Error e, MonadIO m) => MonadIO (ErrorT e m) where
+instance (Error e, MonadIO m) => MonadIO (ErrorT e m) where
     liftIO = lift . liftIO
 
 #if MIN_VERSION_base(4,12,0)

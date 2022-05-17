@@ -52,96 +52,48 @@ newtype
 #endif
   Backwards f a = Backwards { forwards :: f a }
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-  Total f,
-#endif
-  Eq1 f) => Eq1 (Backwards f) where
+instance (Eq1 f) => Eq1 (Backwards f) where
     liftEq eq (Backwards x) (Backwards y) = liftEq eq x y
     {-# INLINE liftEq #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-  Total f,
-#endif
-  Ord1 f) => Ord1 (Backwards f) where
+instance (Ord1 f) => Ord1 (Backwards f) where
     liftCompare comp (Backwards x) (Backwards y) = liftCompare comp x y
     {-# INLINE liftCompare #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-  Total f,
-#endif
-  Read1 f) => Read1 (Backwards f) where
+instance (Read1 f) => Read1 (Backwards f) where
     liftReadsPrec rp rl = readsData $
         readsUnaryWith (liftReadsPrec rp rl) "Backwards" Backwards
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-  Total f,
-#endif
-  Show1 f) => Show1 (Backwards f) where
+instance (Show1 f) => Show1 (Backwards f) where
     liftShowsPrec sp sl d (Backwards x) =
         showsUnaryWith (liftShowsPrec sp sl) "Backwards" d x
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-  Total f,
-#endif
-  Eq1 f, Eq a) => Eq (Backwards f a) where (==) = eq1
-instance (
-#if MIN_VERSION_base(4,16,0)
-  Total f,
-#endif
-  Ord1 f, Ord a) => Ord (Backwards f a) where compare = compare1
-instance (
-#if MIN_VERSION_base(4,16,0)
-  Total f,
-#endif
-  Read1 f, Read a) => Read (Backwards f a) where readsPrec = readsPrec1
-instance (
-#if MIN_VERSION_base(4,16,0)
-  Total f,
-#endif
-  Show1 f, Show a) => Show (Backwards f a) where showsPrec = showsPrec1
+instance (Eq1 f, Eq a) => Eq (Backwards f a) where (==) = eq1
+instance (Ord1 f, Ord a) => Ord (Backwards f a) where compare = compare1
+instance (Read1 f, Read a) => Read (Backwards f a) where readsPrec = readsPrec1
+instance (Show1 f, Show a) => Show (Backwards f a) where showsPrec = showsPrec1
 
 -- | Derived instance.
-instance (
-#if MIN_VERSION_base(4,16,0)
-  Total f,
-#endif
-  Functor f) => Functor (Backwards f) where
+instance (Functor f) => Functor (Backwards f) where
     fmap f (Backwards a) = Backwards (fmap f a)
     {-# INLINE fmap #-}
 
 -- | Apply @f@-actions in the reverse order.
-instance (
-#if MIN_VERSION_base(4,16,0)
-  Total f,
-#endif
-  Applicative f) => Applicative (Backwards f) where
+instance (Applicative f) => Applicative (Backwards f) where
     pure a = Backwards (pure a)
     {-# INLINE pure #-}
     Backwards f <*> Backwards a = Backwards (a <**> f)
     {-# INLINE (<*>) #-}
 
 -- | Try alternatives in the same order as @f@.
-instance (
-#if MIN_VERSION_base(4,16,0)
-  Total f,
-#endif
-  Alternative f) => Alternative (Backwards f) where
+instance (Alternative f) => Alternative (Backwards f) where
     empty = Backwards empty
     {-# INLINE empty #-}
     Backwards x <|> Backwards y = Backwards (x <|> y)
     {-# INLINE (<|>) #-}
 
 -- | Derived instance.
-instance (
-#if MIN_VERSION_base(4,16,0)
-  Total f,
-#endif
-  Foldable f) => Foldable (Backwards f) where
+instance (Foldable f) => Foldable (Backwards f) where
     foldMap f (Backwards t) = foldMap f t
     {-# INLINE foldMap #-}
     foldr f z (Backwards t) = foldr f z t
@@ -170,11 +122,7 @@ instance (
 
 #if MIN_VERSION_base(4,12,0)
 -- | Derived instance.
-instance (
-#if MIN_VERSION_base(4,16,0)
-  Total f,
-#endif
-  Contravariant f) => Contravariant (Backwards f) where
+instance (Contravariant f) => Contravariant (Backwards f) where
     contramap f = Backwards . contramap f . forwards
     {-# INLINE contramap #-}
 #endif

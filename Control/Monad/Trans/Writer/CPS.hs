@@ -73,7 +73,7 @@ import qualified Control.Monad.Fail as Fail
 #endif
 
 #if MIN_VERSION_base(4,16,0)
-import GHC.Types (Total, type(@))
+import GHC.Types (type(@))
 #endif
 
 -- ---------------------------------------------------------------------------
@@ -166,11 +166,7 @@ instance (Functor m) => Functor (WriterT w m) where
     fmap f m = WriterT $ \ w -> (\ (a, w') -> (f a, w')) <$> unWriterT m w
     {-# INLINE fmap #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Functor m, Monad m) => Applicative (WriterT w m) where
+instance (Applicative m, Monad m) => Applicative (WriterT w m) where
     pure a = WriterT $ \ w -> return (a, w)
     {-# INLINE pure #-}
 
@@ -180,23 +176,15 @@ instance (
         return (f x, w'')
     {-# INLINE (<*>) #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Functor m, MonadPlus m) => Alternative (WriterT w m) where
+instance (Functor m, MonadPlus m) => Alternative (WriterT w m) where
     empty = WriterT $ const mzero
     {-# INLINE empty #-}
 
     WriterT m <|> WriterT n = WriterT $ \ w -> m w `mplus` n w
     {-# INLINE (<|>) #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Monad m) => Monad (WriterT w m) where
-#if !(MIN_VERSION_base(4,8,0))
+instance (Monad m) => Monad (WriterT w m) where
+#if !(MIN_VERSION_base(4,8,0)) || MIN_VERSION_base(4,16,0)
     return a = WriterT $ \ w -> return (a, w)
     {-# INLINE return #-}
 #endif
@@ -212,30 +200,18 @@ instance (
 #endif
 
 #if MIN_VERSION_base(4,9,0)
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Fail.MonadFail m) => Fail.MonadFail (WriterT w m) where
+instance (Fail.MonadFail m) => Fail.MonadFail (WriterT w m) where
     fail msg = WriterT $ \ _ -> Fail.fail msg
     {-# INLINE fail #-}
 #endif
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Functor m, MonadPlus m) => MonadPlus (WriterT w m) where
+instance (Functor m, MonadPlus m) => MonadPlus (WriterT w m) where
     mzero = empty
     {-# INLINE mzero #-}
     mplus = (<|>)
     {-# INLINE mplus #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       MonadFix m) => MonadFix (WriterT w m) where
+instance (MonadFix m) => MonadFix (WriterT w m) where
     mfix f = WriterT $ \ w -> mfix $ \ ~(a, _) -> unWriterT (f a) w
     {-# INLINE mfix #-}
 
@@ -245,11 +221,7 @@ instance MonadTrans (WriterT w) where
         return (a, w)
     {-# INLINE lift #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       MonadIO m) => MonadIO (WriterT w m) where
+instance (MonadIO m) => MonadIO (WriterT w m) where
     liftIO = lift . liftIO
     {-# INLINE liftIO #-}
 

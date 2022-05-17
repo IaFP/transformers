@@ -79,7 +79,7 @@ import qualified Control.Monad.Fail as Fail
 import Control.Monad.Fix
 import Data.Monoid
 #if MIN_VERSION_base(4,16,0)
-import GHC.Types (Total, type(@))
+import GHC.Types (type(@))
 #endif
 -- | A monad containing an environment of type @r@, output of type @w@
 -- and an updatable state of type @s@.
@@ -189,11 +189,7 @@ instance (Functor m) => Functor (RWST r w s m) where
         fmap (\ ~(a, s', w) -> (f a, s', w)) $ runRWST m r s
     {-# INLINE fmap #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-      Monoid w, Functor m, Monad m) => Applicative (RWST r w s m) where
+instance (Monoid w, Applicative m, Monad m) => Applicative (RWST r w s m) where
     pure a = RWST $ \ _ s -> return (a, s, mempty)
     {-# INLINE pure #-}
     RWST mf <*> RWST mx  = RWST $ \ r s -> do
@@ -202,22 +198,14 @@ instance (
         return (f x, s'', w `mappend` w')
     {-# INLINE (<*>) #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-      Monoid w, Functor m, MonadPlus m) => Alternative (RWST r w s m) where
+instance (Monoid w, Functor m, MonadPlus m) => Alternative (RWST r w s m) where
     empty = RWST $ \ _ _ -> mzero
     {-# INLINE empty #-}
     RWST m <|> RWST n = RWST $ \ r s -> m r s `mplus` n r s
     {-# INLINE (<|>) #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-      Monoid w, Monad m) => Monad (RWST r w s m) where
-#if !(MIN_VERSION_base(4,8,0))
+instance (Monoid w, Monad m) => Monad (RWST r w s m) where
+#if !(MIN_VERSION_base(4,8,0)) ||  MIN_VERSION_base(4,16,0)
     return a = RWST $ \ _ s -> return (a, s, mempty)
     {-# INLINE return #-}
 #endif
@@ -232,30 +220,18 @@ instance (
 #endif
 
 #if MIN_VERSION_base(4,9,0)
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-      Monoid w, Fail.MonadFail m) => Fail.MonadFail (RWST r w s m) where
+instance (Monoid w, Fail.MonadFail m) => Fail.MonadFail (RWST r w s m) where
     fail msg = RWST $ \ _ _ -> Fail.fail msg
     {-# INLINE fail #-}
 #endif
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-      Monoid w, MonadPlus m) => MonadPlus (RWST r w s m) where
+instance (Monoid w, MonadPlus m) => MonadPlus (RWST r w s m) where
     mzero = RWST $ \ _ _ -> mzero
     {-# INLINE mzero #-}
     RWST m `mplus` RWST n = RWST $ \ r s -> m r s `mplus` n r s
     {-# INLINE mplus #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-      Monoid w, MonadFix m) => MonadFix (RWST r w s m) where
+instance (Monoid w, MonadFix m) => MonadFix (RWST r w s m) where
     mfix f = RWST $ \ r s -> mfix $ \ ~(a, _, _) -> runRWST (f a) r s
     {-# INLINE mfix #-}
 
@@ -265,11 +241,7 @@ instance (Monoid w) => MonadTrans (RWST r w s) where
         return (a, s, mempty)
     {-# INLINE lift #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-      Monoid w, MonadIO m) => MonadIO (RWST r w s m) where
+instance (Monoid w, MonadIO m) => MonadIO (RWST r w s m) where
     liftIO = lift . liftIO
     {-# INLINE liftIO #-}
 

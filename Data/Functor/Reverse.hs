@@ -55,97 +55,49 @@ newtype
 #endif
   Reverse f a = Reverse { getReverse :: f a }
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total f,
-#endif
-       Eq1 f) => Eq1 (Reverse f) where
+instance (Eq1 f) => Eq1 (Reverse f) where
     liftEq eq (Reverse x) (Reverse y) = liftEq eq x y
     {-# INLINE liftEq #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total f,
-#endif
-       Ord1 f) => Ord1 (Reverse f) where
+instance (Ord1 f) => Ord1 (Reverse f) where
     liftCompare comp (Reverse x) (Reverse y) = liftCompare comp x y
     {-# INLINE liftCompare #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total f,
-#endif
-       Read1 f) => Read1 (Reverse f) where
+instance (Read1 f) => Read1 (Reverse f) where
     liftReadsPrec rp rl = readsData $
         readsUnaryWith (liftReadsPrec rp rl) "Reverse" Reverse
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total f,
-#endif
-       Show1 f) => Show1 (Reverse f) where
+instance (Show1 f) => Show1 (Reverse f) where
     liftShowsPrec sp sl d (Reverse x) =
         showsUnaryWith (liftShowsPrec sp sl) "Reverse" d x
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total f,
-#endif
-       Eq1 f, Eq a) => Eq (Reverse f a) where (==) = eq1
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total f,
-#endif
-       Ord1 f, Ord a) => Ord (Reverse f a) where compare = compare1
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total f,
-#endif
-       Read1 f, Read a) => Read (Reverse f a) where readsPrec = readsPrec1
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total f,
-#endif
-       Show1 f, Show a) => Show (Reverse f a) where showsPrec = showsPrec1
+instance (Eq1 f, Eq a) => Eq (Reverse f a) where (==) = eq1
+instance (Ord1 f, Ord a) => Ord (Reverse f a) where compare = compare1
+instance (Read1 f, Read a) => Read (Reverse f a) where readsPrec = readsPrec1
+instance (Show1 f, Show a) => Show (Reverse f a) where showsPrec = showsPrec1
 
 -- | Derived instance.
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total f,
-#endif
-       Functor f) => Functor (Reverse f) where
+instance (Functor f) => Functor (Reverse f) where
     fmap f (Reverse a) = Reverse (fmap f a)
     {-# INLINE fmap #-}
 
 -- | Derived instance.
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total f,
-#endif
-       Applicative f) => Applicative (Reverse f) where
+instance (Applicative f) => Applicative (Reverse f) where
     pure a = Reverse (pure a)
     {-# INLINE pure #-}
     Reverse f <*> Reverse a = Reverse (f <*> a)
     {-# INLINE (<*>) #-}
 
 -- | Derived instance.
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total f,
-#endif
-       Alternative f) => Alternative (Reverse f) where
+instance (Alternative f) => Alternative (Reverse f) where
     empty = Reverse empty
     {-# INLINE empty #-}
     Reverse x <|> Reverse y = Reverse (x <|> y)
     {-# INLINE (<|>) #-}
 
 -- | Derived instance.
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Monad m) => Monad (Reverse m) where
-#if !(MIN_VERSION_base(4,8,0))
+instance (Monad m) => Monad (Reverse m) where
+#if !(MIN_VERSION_base(4,8,0)) || MIN_VERSION_base(4,16,0)
     return a = Reverse (return a)
     {-# INLINE return #-}
 #endif
@@ -157,32 +109,20 @@ instance (
 #endif
 
 #if MIN_VERSION_base(4,9,0)
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Fail.MonadFail m) => Fail.MonadFail (Reverse m) where
+instance (Fail.MonadFail m) => Fail.MonadFail (Reverse m) where
     fail msg = Reverse (Fail.fail msg)
     {-# INLINE fail #-}
 #endif
 
 -- | Derived instance.
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       MonadPlus m) => MonadPlus (Reverse m) where
+instance (MonadPlus m) => MonadPlus (Reverse m) where
     mzero = Reverse mzero
     {-# INLINE mzero #-}
     Reverse x `mplus` Reverse y = Reverse (x `mplus` y)
     {-# INLINE mplus #-}
 
 -- | Fold from right to left.
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total f,
-#endif
-       Foldable f) => Foldable (Reverse f) where
+instance (Foldable f) => Foldable (Reverse f) where
     foldMap f (Reverse t) = getDual (foldMap (Dual . f) t)
     {-# INLINE foldMap #-}
     foldr f z (Reverse t) = foldl (flip f) z t
@@ -210,11 +150,7 @@ instance (
 
 #if MIN_VERSION_base(4,12,0)
 -- | Derived instance.
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total f,
-#endif
-       Contravariant f) => Contravariant (Reverse f) where
+instance (Contravariant f) => Contravariant (Reverse f) where
     contramap f = Reverse . contramap f . getReverse
     {-# INLINE contramap #-}
 #endif

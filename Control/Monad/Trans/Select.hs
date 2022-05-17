@@ -155,11 +155,7 @@ instance MonadTrans (SelectT r) where
     lift = SelectT . const
     {-# INLINE lift #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-      MonadIO m) => MonadIO (SelectT r m) where
+instance (MonadIO m) => MonadIO (SelectT r m) where
     liftIO = lift . liftIO
     {-# INLINE liftIO #-}
 

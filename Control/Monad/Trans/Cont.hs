@@ -203,11 +203,7 @@ instance MonadTrans (ContT r) where
     lift m = ContT (m >>=)
     {-# INLINE lift #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-  Total m,
-#endif
-  MonadIO m) => MonadIO (ContT r m) where
+instance (MonadIO m) => MonadIO (ContT r m) where
     liftIO = lift . liftIO
     {-# INLINE liftIO #-}
 
@@ -234,11 +230,7 @@ callCC f = ContT $ \ c -> runContT (f (\ x -> ContT $ \ _ -> c x)) c
 --
 -- * @'resetT' ('lift' m) = 'lift' m@
 --
-resetT :: (
-#if MIN_VERSION_base(4,16,0)
-  Total m, 
-#endif
-  Monad m) => ContT r m r -> ContT r' m r
+resetT :: (Applicative m, Monad m) => ContT r m r -> ContT r' m r
 resetT = lift . evalContT
 {-# INLINE resetT #-}
 
