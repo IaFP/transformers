@@ -221,33 +221,21 @@ instance (
        f' (a, b) = fmap (\ c -> (c, b)) (f a)
     {-# INLINE traverse #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Monoid w, Applicative m) => Applicative (WriterT w m) where
+instance (Monoid w, Applicative m) => Applicative (WriterT w m) where
     pure a  = WriterT $ pure (a, mempty)
     {-# INLINE pure #-}
     f <*> v = WriterT $ liftA2 k (runWriterT f) (runWriterT v)
       where k (a, w) (b, w') = (a b, w `mappend` w')
     {-# INLINE (<*>) #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Monoid w, Alternative m) => Alternative (WriterT w m) where
+instance (Monoid w, Alternative m) => Alternative (WriterT w m) where
     empty   = WriterT empty
     {-# INLINE empty #-}
     m <|> n = WriterT $ runWriterT m <|> runWriterT n
     {-# INLINE (<|>) #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Monoid w, Monad m) => Monad (WriterT w m) where
-#if !(MIN_VERSION_base(4,8,0))
+instance (Monoid w, Monad m) => Monad (WriterT w m) where
+#if !(MIN_VERSION_base(4,8,0)) || MIN_VERSION_base(4,16,0)
     return a = writer (a, mempty)
     {-# INLINE return #-}
 #endif
@@ -271,21 +259,13 @@ instance (
     {-# INLINE fail #-}
 #endif
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-      Monoid w, MonadPlus m) => MonadPlus (WriterT w m) where
+instance (Monoid w, MonadPlus m) => MonadPlus (WriterT w m) where
     mzero       = WriterT mzero
     {-# INLINE mzero #-}
     m `mplus` n = WriterT $ runWriterT m `mplus` runWriterT n
     {-# INLINE mplus #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-      Monoid w, MonadFix m) => MonadFix (WriterT w m) where
+instance (Monoid w, MonadFix m) => MonadFix (WriterT w m) where
     mfix m = WriterT $ mfix $ \ ~(a, _) -> runWriterT (m a)
     {-# INLINE mfix #-}
 
@@ -295,11 +275,7 @@ instance (Monoid w) => MonadTrans (WriterT w) where
         return (a, mempty)
     {-# INLINE lift #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Monoid w, MonadIO m) => MonadIO (WriterT w m) where
+instance (Monoid w, MonadIO m) => MonadIO (WriterT w m) where
     liftIO = lift . liftIO
     {-# INLINE liftIO #-}
 
@@ -321,11 +297,7 @@ instance Contravariant m => Contravariant (WriterT w m) where
 #endif
 
 -- | @'tell' w@ is an action that produces the output @w@.
-tell :: (
-#if MIN_VERSION_base(4,16,0)
-   m @ ((), w),
-#endif  
-    Monad m) => w -> WriterT w m ()
+tell :: (Monad m) => w -> WriterT w m ()
 tell w = writer ((), w)
 {-# INLINE tell #-}
 
@@ -333,11 +305,7 @@ tell w = writer ((), w)
 -- output to the value of the computation.
 --
 -- * @'runWriterT' ('listen' m) = 'liftM' (\\ (a, w) -> ((a, w), w)) ('runWriterT' m)@
-listen :: (
-#if MIN_VERSION_base(4,16,0)
-   m @ (a, w), m @ ((a, w), w),
-#endif  
-  Monad m) => WriterT w m a -> WriterT w m (a, w)
+listen :: (Monad m) => WriterT w m a -> WriterT w m (a, w)
 listen m = WriterT $ do
     (a, w) <- runWriterT m
     return ((a, w), w)
@@ -349,11 +317,7 @@ listen m = WriterT $ do
 -- * @'listens' f m = 'liftM' (id *** f) ('listen' m)@
 --
 -- * @'runWriterT' ('listens' f m) = 'liftM' (\\ (a, w) -> ((a, f w), w)) ('runWriterT' m)@
-listens :: (
-#if MIN_VERSION_base(4,16,0)
-   m @ (a, w), m @ ((a, b), w),
-#endif  
-  Monad m) => (w -> b) -> WriterT w m a -> WriterT w m (a, b)
+listens :: (Monad m) => (w -> b) -> WriterT w m a -> WriterT w m (a, b)
 listens f m = WriterT $ do
     (a, w) <- runWriterT m
     return ((a, f w), w)
@@ -364,11 +328,7 @@ listens f m = WriterT $ do
 -- to the output.
 --
 -- * @'runWriterT' ('pass' m) = 'liftM' (\\ ((a, f), w) -> (a, f w)) ('runWriterT' m)@
-pass :: (
-#if MIN_VERSION_base(4,16,0)
-   m @ ((a, w -> w), w), m @ (a, w),
-#endif  
-  Monad m) => WriterT w m (a, w -> w) -> WriterT w m a
+pass :: (Monad m) => WriterT w m (a, w -> w) -> WriterT w m a
 pass m = WriterT $ do
     ((a, f), w) <- runWriterT m
     return (a, f w)
@@ -381,11 +341,7 @@ pass m = WriterT $ do
 -- * @'censor' f m = 'pass' ('liftM' (\\ x -> (x,f)) m)@
 --
 -- * @'runWriterT' ('censor' f m) = 'liftM' (\\ (a, w) -> (a, f w)) ('runWriterT' m)@
-censor :: (
-#if MIN_VERSION_base(4,16,0)
-   m @ (a, w),
-#endif  
-  Monad m) => (w -> w) -> WriterT w m a -> WriterT w m a
+censor :: (Monad m) => (w -> w) -> WriterT w m a -> WriterT w m a
 censor f m = WriterT $ do
     (a, w) <- runWriterT m
     return (a, f w)
