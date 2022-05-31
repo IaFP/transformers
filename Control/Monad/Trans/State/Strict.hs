@@ -260,11 +260,7 @@ instance MonadTrans (StateT s) where
         return (a, s)
     {-# INLINE lift #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       MonadIO m) => MonadIO (StateT s m) where
+instance (MonadIO m) => MonadIO (StateT s m) where
     liftIO = lift . liftIO
     {-# INLINE liftIO #-}
 

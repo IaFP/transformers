@@ -247,11 +247,7 @@ instance (Monoid w, Monad m) => Monad (WriterT w m) where
 #endif
 
 #if MIN_VERSION_base(4,9,0)
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       Monoid w, Fail.MonadFail m) => Fail.MonadFail (WriterT w m) where
+instance (Monoid w, Fail.MonadFail m) => Fail.MonadFail (WriterT w m) where
     fail msg = WriterT $ Fail.fail msg
     {-# INLINE fail #-}
 #endif

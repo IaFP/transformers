@@ -250,11 +250,7 @@ instance (Monoid w, Monad m) => Monad (WriterT w m) where
 #endif
 
 #if MIN_VERSION_base(4,9,0)
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-      Monoid w, Fail.MonadFail m) => Fail.MonadFail (WriterT w m) where
+instance (Monoid w, Fail.MonadFail m) => Fail.MonadFail (WriterT w m) where
     fail msg = WriterT $ Fail.fail msg
     {-# INLINE fail #-}
 #endif
@@ -280,11 +276,7 @@ instance (Monoid w, MonadIO m) => MonadIO (WriterT w m) where
     {-# INLINE liftIO #-}
 
 #if MIN_VERSION_base(4,4,0)
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-      Monoid w, MonadZip m) => MonadZip (WriterT w m) where
+instance (Monoid w, MonadZip m) => MonadZip (WriterT w m) where
     mzipWith f (WriterT x) (WriterT y) = WriterT $
         mzipWith (\ (a, w) (b, w') -> (f a b, w `mappend` w')) x y
     {-# INLINE mzipWith #-}

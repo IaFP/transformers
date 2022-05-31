@@ -212,11 +212,7 @@ instance MonadTrans (ReaderT r) where
     lift   = liftReaderT
     {-# INLINE lift #-}
 
-instance (
-#if MIN_VERSION_base(4,16,0)
-       Total m,
-#endif
-       MonadIO m) => MonadIO (ReaderT r m) where
+instance (MonadIO m) => MonadIO (ReaderT r m) where
     liftIO = lift . liftIO
     {-# INLINE liftIO #-}
 
